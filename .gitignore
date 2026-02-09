@@ -30,8 +30,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.production
+!.env.example
+
+# keypairs - NEVER commit
+*-keypair.json
+*.keypair
+
+# traefik certs
+traefik/acme/
 
 # vercel
 .vercel
