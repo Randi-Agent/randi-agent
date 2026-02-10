@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  username      String?  @unique
+  creditBalance Int      @default(0)
+  nonce         String?
+  nonceExpiresAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions           Session[]
+  containers         Container[]
+  creditTransactions  CreditTransaction[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  jti       String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jti])
+}
+
+enum ContainerStatus {
+  PROVISIONING
+  RUNNING
+  STOPPING
+  STOPPED
+  EXPIRED
+  ERROR
+}
+
+model Container {
+  id          String          @id @default(cuid())
+  userId      String
+  dockerId    String?         @unique
+  subdomain   String          @unique
+  agentId     String
+  status      ContainerStatus @default(PROVISIONING)
+  url         String?
+  password    String?
+  creditsUsed Int             @default(0)
+  expiresAt   DateTime
+  stoppedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent AgentConfig @relation(fields: [agentId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+enum TransactionType {
+  PURCHASE
+  USAGE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+
+model CreditTransaction {
+  id            String            @id @default(cuid())
+  userId        String
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  amount        Int
+  txSignature   String?           @unique
+  tokenAmount   BigInt?
+  memo          String?
+  containerId   String?
+  description   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([txSignature])
+  @@index([type, status])
+}
+
+model AgentConfig {
+  id             String  @id @default(cuid())
+  slug           String  @unique
+  name           String
+  description    String
+  image          String
+  internalPort   Int
+  creditsPerHour Int
+  memoryLimit    BigInt
+  cpuLimit       BigInt
+  pidLimit       Int     @default(256)
+  envVars        Json    @default("{}")
+  volumes        Json    @default("[]")
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  containers Container[]
+}

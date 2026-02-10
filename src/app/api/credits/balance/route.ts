@@ -1,0 +1,36 @@
+import { NextResponse } from "next/server";
+import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
+import { prisma } from "@/lib/db/prisma";
+
+export async function GET() {
+  try {
+    const auth = await requireAuth();
+
+    const user = await prisma.user.findUnique({
+      where: { id: auth.userId },
+      select: { creditBalance: true },
+    });
+
+    const transactions = await prisma.creditTransaction.findMany({
+      where: { userId: auth.userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        amount: true,
+        txSignature: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({
+      balance: user?.creditBalance || 0,
+      transactions,
+    });
+  } catch (error) {
+    return handleAuthError(error);
+  }
+}

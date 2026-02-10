@@ -1,0 +1,88 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import nacl from "tweetnacl";
+import bs58 from "bs58";
+import { consumeNonce } from "@/lib/auth/nonce";
+import { signToken } from "@/lib/auth/jwt";
+import { prisma } from "@/lib/db/prisma";
+import { isValidSolanaAddress } from "@/lib/solana/validation";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
+
+const schema = z.object({
+  wallet: z.string().refine(isValidSolanaAddress, "Invalid wallet address"),
+  signature: z.string().min(1, "Signature required"),
+  nonce: z.string().min(1, "Nonce required"),
+});
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const parsed = schema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0].message },
+      { status: 400 }
+    );
+  }
+
+  const { wallet, signature, nonce } = parsed.data;
+
+  const { allowed } = checkRateLimit(`auth:verify:${wallet}`, RATE_LIMITS.auth);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  // Verify nonce
+  const nonceValid = await consumeNonce(wallet, nonce);
+  if (!nonceValid) {
+    return NextResponse.json(
+      { error: "Invalid or expired nonce" },
+      { status: 401 }
+    );
+  }
+
+  // Verify signature
+  const message = `Sign in to Agent Platform\nNonce: ${nonce}`;
+  const messageBytes = new TextEncoder().encode(message);
+  const signatureBytes = bs58.decode(signature);
+  const publicKeyBytes = bs58.decode(wallet);
+
+  const isValid = nacl.sign.detached.verify(
+    messageBytes,
+    signatureBytes,
+    publicKeyBytes
+  );
+
+  if (!isValid) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
+
+  // Get or create user
+  const user = await prisma.user.upsert({
+    where: { walletAddress: wallet },
+    update: {},
+    create: { walletAddress: wallet },
+  });
+
+  // Issue JWT
+  const token = await signToken(user.id, wallet);
+
+  const response = NextResponse.json({
+    user: {
+      id: user.id,
+      walletAddress: user.walletAddress,
+      username: user.username,
+      creditBalance: user.creditBalance,
+    },
+  });
+
+  response.cookies.set("auth-token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60,
+    path: "/",
+  });
+
+  return response;
+}

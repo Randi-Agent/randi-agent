@@ -1,0 +1,12 @@
+export interface User {
+  id: string;
+  walletAddress: string;
+  username: string | null;
+  creditBalance: number;
+}
+
+export interface AuthState {
+  user: User | null;
+  loading: boolean;
+  connected: boolean;
+}
