@@ -45,7 +45,6 @@ export async function verifyTransaction(
         // Verify the destination ATA belongs to the treasury
         const treasuryKey = new PublicKey(expectedRecipient);
         const mintKey = new PublicKey(expectedMint);
-        const { PublicKey: PK } = await import("@solana/web3.js");
         const { getAssociatedTokenAddress } = await import("@solana/spl-token");
         const expectedATA = await getAssociatedTokenAddress(mintKey, treasuryKey);
 

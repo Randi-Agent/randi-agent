@@ -1,11 +1,8 @@
-FROM node:20-slim AS base
+FROM node:20-bullseye-slim AS base
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-FROM base AS deps
-COPY package.json package-lock.json ./
-RUN npm ci --only=production
-
-FROM base AS build
+FROM base AS builder
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
@@ -17,12 +14,11 @@ ENV NODE_ENV=production
 RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 nextjs
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
-COPY --from=build /app/public ./public
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+# Automatically leverage output: 'standalone' from next.config.ts
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
 
 USER nextjs
 EXPOSE 3000

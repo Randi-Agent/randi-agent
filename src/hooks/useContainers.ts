@@ -6,15 +6,21 @@ import type { ContainerInfo } from "@/types/container";
 export function useContainers() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchContainers = useCallback(async () => {
     try {
+      setError(null);
       const res = await fetch("/api/containers");
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to fetch containers");
+        return;
+      }
       const data = await res.json();
       setContainers(data.containers);
-    } catch {
-      // ignore
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -68,6 +74,7 @@ export function useContainers() {
   return {
     containers,
     loading,
+    error,
     launchContainer,
     stopContainer,
     extendContainer,

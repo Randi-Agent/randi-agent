@@ -7,7 +7,6 @@ import { prisma } from "@/lib/db/prisma";
 const DOCKER_NETWORK = process.env.DOCKER_NETWORK || "traefik-net";
 
 export interface ProvisionResult {
-  containerId: string;
   dockerId: string;
   subdomain: string;
   url: string;
@@ -17,8 +16,7 @@ export interface ProvisionResult {
 export async function provisionContainer(
   userId: string,
   agentSlug: string,
-  username: string,
-  hours: number
+  username: string
 ): Promise<ProvisionResult> {
   const agentConfigFactory = getAgentConfig(agentSlug);
   if (!agentConfigFactory) {
@@ -82,30 +80,18 @@ export async function provisionContainer(
     },
   });
 
-  await container.start();
+  try {
+    await container.start();
 
-  const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
-  const creditsUsed = hours * agent.creditsPerHour;
-
-  const dbContainer = await prisma.container.create({
-    data: {
-      userId,
+    return {
       dockerId: container.id,
       subdomain,
-      agentId: agent.id,
-      status: "RUNNING",
       url: `https://${fullSubdomain}`,
       password: agentSlug === "openclaw" ? password : null,
-      creditsUsed,
-      expiresAt,
-    },
-  });
-
-  return {
-    containerId: dbContainer.id,
-    dockerId: container.id,
-    subdomain,
-    url: `https://${fullSubdomain}`,
-    password: agentSlug === "openclaw" ? password : null,
-  };
+    };
+  } catch (error) {
+    // Cleanup if start fails
+    await container.remove({ force: true }).catch(() => { });
+    throw error;
+  }
 }

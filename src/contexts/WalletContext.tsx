@@ -32,8 +32,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signIn: async () => {},
-  signOut: () => {},
+  signIn: async () => { },
+  signOut: () => { },
 });
 
 export function useAuth() {
@@ -52,7 +52,7 @@ function AuthProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         if (data?.user) setUser(data.user);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -87,9 +87,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   }, [publicKey, signMessage]);
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout request failed", e);
+    }
     setUser(null);
     disconnect();
+    // Cookie is also cleared by the server, but doing it here doesn't hurt
     document.cookie = "auth-token=; path=/; max-age=0";
   }, [disconnect]);
 
@@ -112,7 +118,7 @@ export function WalletContextProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         if (data.solanaRpcUrl) setEndpoint(data.solanaRpcUrl);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);

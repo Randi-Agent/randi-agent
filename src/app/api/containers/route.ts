@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { nanoid } from "nanoid";
 import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 import { prisma } from "@/lib/db/prisma";
 import { provisionContainer } from "@/lib/docker/provisioner";
+import { cleanupExpiredContainers } from "@/lib/docker/cleanup";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
 
 const provisionSchema = z.object({
@@ -13,6 +15,11 @@ const provisionSchema = z.object({
 export async function GET() {
   try {
     const auth = await requireAuth();
+
+    // Lazy cleanup of expired containers
+    await cleanupExpiredContainers().catch((e) =>
+      console.error("Lazy cleanup failed", e)
+    );
 
     const containers = await prisma.container.findMany({
       where: { userId: auth.userId },
@@ -42,8 +49,13 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  let createdContainerId: string | null = null;
+  let creditsReserved = 0;
+  let userId: string | null = null;
+
   try {
     const auth = await requireAuth();
+    userId = auth.userId;
 
     const { allowed } = checkRateLimit(
       `provision:${auth.userId}`,
@@ -64,66 +76,129 @@ export async function POST(request: NextRequest) {
 
     const { agentId, hours } = parsed.data;
 
-    // Look up agent config
-    const agent = await prisma.agentConfig.findUnique({
-      where: { id: agentId },
-    });
-    if (!agent || !agent.active) {
-      return NextResponse.json({ error: "Agent not found" }, { status: 404 });
-    }
+    // 1. Transaction: Check balance, reserve credits, and create "PROVISIONING" record
+    const provisionData = await prisma.$transaction(async (tx) => {
+      const agent = await tx.agentConfig.findUnique({ where: { id: agentId } });
+      if (!agent || !agent.active) throw new Error("AGENT_NOT_FOUND");
 
-    // Check credits
-    const creditsNeeded = hours * agent.creditsPerHour;
-    const user = await prisma.user.findUnique({
-      where: { id: auth.userId },
+      const user = await tx.user.findUnique({ where: { id: auth.userId } });
+      if (!user) throw new Error("USER_NOT_FOUND");
+
+      const creditsNeeded = hours * agent.creditsPerHour;
+      if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
+      if (!user.username) throw new Error("USERNAME_REQUIRED");
+
+      creditsReserved = creditsNeeded;
+
+      // Reserve credits
+      await tx.user.update({
+        where: { id: auth.userId },
+        data: { creditBalance: { decrement: creditsNeeded } },
+      });
+
+      // Create usage transaction
+      await tx.creditTransaction.create({
+        data: {
+          userId: auth.userId,
+          type: "USAGE",
+          status: "CONFIRMED",
+          amount: -creditsNeeded,
+          description: `Provisioning ${agent.name} for ${hours}h`,
+        },
+      });
+
+      // Create initial container record
+      const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+      const container = await tx.container.create({
+        data: {
+          userId: auth.userId,
+          agentId: agent.id,
+          subdomain: `temp-${nanoid(10)}`, // temporary, will be updated by provisioner
+          status: "PROVISIONING",
+          creditsUsed: creditsNeeded,
+          expiresAt,
+        },
+      });
+
+      return { containerId: container.id, agentSlug: agent.slug, username: user.username, agentName: agent.name };
     });
-    if (!user || user.creditBalance < creditsNeeded) {
-      return NextResponse.json(
-        { error: `Insufficient credits. Need ${creditsNeeded}, have ${user?.creditBalance || 0}` },
-        { status: 402 }
+
+    createdContainerId = provisionData.containerId;
+
+    // 2. Provision Docker container
+    let result;
+    try {
+      result = await provisionContainer(
+        auth.userId,
+        provisionData.agentSlug,
+        provisionData.username
       );
+    } catch (dockerError) {
+      console.error("Docker provisioning failed:", dockerError);
+      throw new Error("DOCKER_PROVISION_FAILED");
     }
 
-    // Ensure user has a username
-    if (!user.username) {
-      return NextResponse.json(
-        { error: "Please set a username before launching containers" },
-        { status: 400 }
-      );
-    }
-
-    // Deduct credits
-    await prisma.user.update({
-      where: { id: auth.userId },
-      data: { creditBalance: { decrement: creditsNeeded } },
-    });
-
-    // Record usage transaction
-    await prisma.creditTransaction.create({
+    // 3. Update container record with final status and Docker metadata
+    await prisma.container.update({
+      where: { id: createdContainerId },
       data: {
-        userId: auth.userId,
-        type: "USAGE",
-        status: "CONFIRMED",
-        amount: -creditsNeeded,
-        description: `Launch ${agent.name} for ${hours}h`,
+        status: "RUNNING",
+        dockerId: result.dockerId,
+        subdomain: result.subdomain,
+        url: result.url,
+        password: result.password,
       },
     });
 
-    // Provision container
-    const result = await provisionContainer(
-      auth.userId,
-      agent.slug,
-      user.username,
-      hours
-    );
-
     return NextResponse.json({
-      containerId: result.containerId,
+      containerId: createdContainerId,
       url: result.url,
       password: result.password,
       expiresAt: new Date(Date.now() + hours * 60 * 60 * 1000).toISOString(),
     });
-  } catch (error) {
+
+  } catch (error: any) {
+    // Handle rollbacks if we failed after reserving credits
+    if (userId && creditsReserved > 0 && createdContainerId) {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Refund credits
+          await tx.user.update({
+            where: { id: userId! },
+            data: { creditBalance: { increment: creditsReserved } },
+          });
+
+          // Record refund
+          await tx.creditTransaction.create({
+            data: {
+              userId: userId!,
+              type: "REFUND",
+              status: "CONFIRMED",
+              amount: creditsReserved,
+              containerId: createdContainerId!,
+              description: `Refund for failed provisioning`,
+            },
+          });
+
+          // Update container status
+          await tx.container.update({
+            where: { id: createdContainerId! },
+            data: { status: "ERROR" },
+          });
+        });
+      } catch (rollbackError) {
+        console.error("Critical: Rollback failed!", rollbackError);
+      }
+    }
+
+    if (error instanceof Error) {
+      const message = error.message;
+      if (message === "AGENT_NOT_FOUND") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+      if (message === "INSUFFICIENT_CREDITS") return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+      if (message === "USERNAME_REQUIRED") return NextResponse.json({ error: "Please set a username first" }, { status: 400 });
+      if (message === "DOCKER_PROVISION_FAILED") return NextResponse.json({ error: "Failed to provision agent container" }, { status: 500 });
+    }
+
     return handleAuthError(error);
   }
 }

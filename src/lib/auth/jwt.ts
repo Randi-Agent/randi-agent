@@ -2,9 +2,18 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { v4 as uuidv4 } from "uuid";
 import { prisma } from "@/lib/db/prisma";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-in-production-32chars"
-);
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET environment variable is required in production");
+    }
+    return new TextEncoder().encode("dev-secret-change-in-production-32chars");
+  }
+  return new TextEncoder().encode(secret);
+};
+
+const JWT_SECRET = getJwtSecret();
 
 const JWT_ISSUER = "agent-platform";
 const JWT_EXPIRY = "24h";

@@ -7,16 +7,22 @@ export function useCredits() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchBalance = useCallback(async () => {
     try {
+      setError(null);
       const res = await fetch("/api/credits/balance");
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to fetch balance");
+        return;
+      }
       const data = await res.json();
       setBalance(data.balance);
       setTransactions(data.transactions);
-    } catch {
-      // ignore
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -59,6 +65,7 @@ export function useCredits() {
     balance,
     transactions,
     loading,
+    error,
     initiatePurchase,
     verifyPurchase,
     refresh: fetchBalance,

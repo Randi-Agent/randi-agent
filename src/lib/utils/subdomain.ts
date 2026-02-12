@@ -1,3 +1,5 @@
+import { nanoid } from "nanoid";
+
 const RESERVED_WORDS = new Set([
   "www",
   "api",
@@ -36,15 +38,16 @@ export function sanitizeUsername(input: string): string {
 
 export function isValidUsername(username: string): boolean {
   if (username.length < 3 || username.length > 20) return false;
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(username) && username.length > 2) return false;
-  if (/^[a-z0-9]$/.test(username)) return false; // too short after sanitization
+  // Ensure starts/ends with alphanumeric and contains only lowercase/numbers/hyphens
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(username)) return false;
   if (RESERVED_WORDS.has(username)) return false;
   return true;
 }
 
 export function generateSubdomain(username: string, agentSlug: string): string {
   const sanitized = sanitizeUsername(username);
-  return `${sanitized}-${agentSlug}`;
+  const suffix = nanoid(4).toLowerCase();
+  return `${sanitized}-${agentSlug}-${suffix}`;
 }
 
 export function isReservedWord(word: string): boolean {

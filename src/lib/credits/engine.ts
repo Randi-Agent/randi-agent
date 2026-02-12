@@ -47,15 +47,22 @@ export async function deductCredits(
   description: string,
   containerId?: string
 ): Promise<boolean> {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || user.creditBalance < amount) return false;
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { creditBalance: true },
+    });
 
-  await prisma.$transaction([
-    prisma.user.update({
+    if (!user || user.creditBalance < amount) {
+      return false;
+    }
+
+    await tx.user.update({
       where: { id: userId },
       data: { creditBalance: { decrement: amount } },
-    }),
-    prisma.creditTransaction.create({
+    });
+
+    await tx.creditTransaction.create({
       data: {
         userId,
         type: "USAGE",
@@ -64,10 +71,10 @@ export async function deductCredits(
         containerId,
         description,
       },
-    }),
-  ]);
+    });
 
-  return true;
+    return true;
+  });
 }
 
 export async function addCredits(
@@ -77,18 +84,19 @@ export async function addCredits(
   tokenAmount: bigint,
   memo: string
 ): Promise<void> {
-  await prisma.$transaction([
-    prisma.user.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
       where: { id: userId },
       data: { creditBalance: { increment: amount } },
-    }),
-    prisma.creditTransaction.updateMany({
+    });
+
+    await tx.creditTransaction.updateMany({
       where: { memo, userId, status: "PENDING" },
       data: {
         status: "CONFIRMED",
         txSignature,
         tokenAmount,
       },
-    }),
-  ]);
+    });
+  });
 }

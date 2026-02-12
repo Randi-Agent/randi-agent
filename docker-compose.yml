@@ -23,11 +23,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: agentplatform
-      POSTGRES_PASSWORD: agentplatform
-      POSTGRES_DB: agentplatform
+      POSTGRES_USER: ${DB_USER:-agentplatform}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-agentplatform}
+      POSTGRES_DB: ${DB_NAME:-agentplatform}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agentplatform"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,7 +43,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://agentplatform:agentplatform@db:5432/agentplatform?schema=public
+      DATABASE_URL: postgresql://${DB_USER:-agentplatform}:${DB_PASSWORD:-agentplatform}@db:5432/${DB_NAME:-agentplatform}?schema=public
       NODE_ENV: production
     env_file:
       - .env

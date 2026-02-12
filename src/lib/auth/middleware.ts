@@ -45,6 +45,19 @@ export function handleAuthError(error: unknown): NextResponse {
   if (error instanceof AuthError) {
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
-  console.error("Unexpected error:", error);
-  return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+  // Handle common Prisma or validation errors if they have specific patterns
+  const errorMessage = error instanceof Error ? error.message : "Internal server error";
+
+  console.error("API Error:", error);
+
+  // Don't leak sensitive error details in production
+  const displayMessage = process.env.NODE_ENV === "production" && !(error instanceof AuthError)
+    ? "An unexpected error occurred"
+    : errorMessage;
+
+  return NextResponse.json(
+    { error: displayMessage },
+    { status: 500 }
+  );
 }

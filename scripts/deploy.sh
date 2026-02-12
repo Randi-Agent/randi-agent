@@ -5,6 +5,14 @@ echo "========================================="
 echo "  Agent Platform - Deploy Script"
 echo "========================================="
 
+# Configuration
+PUBLIC_IP=$(curl -s https://ifconfig.me || echo "localhost")
+DB_USER="agentplatform"
+DB_NAME="agentplatform"
+DB_PASSWORD=$(openssl rand -hex 16)
+JWT_SECRET=$(openssl rand -hex 32)
+TREASURY_WALLET="BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3"
+
 # --- 1. Install Docker if needed ---
 if ! command -v docker &> /dev/null; then
   echo "[1/7] Installing Docker..."
@@ -21,50 +29,41 @@ fi
 echo "  $(docker --version)"
 echo "  $(docker compose version)"
 
-# --- 2. Clone repo ---
+# --- 2. Project setup ---
 echo "[2/7] Setting up project..."
-cd /root
-if [ -d "agent-platform" ]; then
-  echo "  Project directory exists, pulling latest..."
-  cd agent-platform
-  git pull
-else
-  git clone https://github.com/probabilityexchange-sketch/agent-platform.git
-  cd agent-platform
-fi
+# Assume script is run from project root
 
 # --- 3. Create .env ---
 echo "[3/7] Configuring environment..."
-JWT_SECRET=$(openssl rand -hex 32)
+
+if [ -f .env ]; then
+  echo "  .env already exists, backing up to .env.bak"
+  cp .env .env.bak
+fi
 
 cat > .env << ENVEOF
-# Database (internal Docker network)
-DATABASE_URL="postgresql://agentplatform:agentplatform@db:5432/agentplatform?schema=public"
+# Database
+DB_USER="${DB_USER}"
+DB_NAME="${DB_NAME}"
+DB_PASSWORD="${DB_PASSWORD}"
+DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?schema=public"
 
-# Domain - change when you have one
-NEXT_PUBLIC_DOMAIN="66.179.241.33"
+# Domain
+NEXT_PUBLIC_DOMAIN="${PUBLIC_IP}"
 
 # JWT
 JWT_SECRET="${JWT_SECRET}"
 
-# Solana (devnet for now - switch to mainnet-beta before launch)
+# Solana
 NEXT_PUBLIC_SOLANA_NETWORK="devnet"
 NEXT_PUBLIC_SOLANA_RPC_URL="https://api.devnet.solana.com"
 SOLANA_RPC_URL="https://api.devnet.solana.com"
 
-# SPL Token (update TOKEN_MINT when you create your Pump.fun token)
+# SPL Token
 TOKEN_MINT="So11111111111111111111111111111111111111112"
 NEXT_PUBLIC_TOKEN_MINT="So11111111111111111111111111111111111111112"
 TOKEN_DECIMALS="9"
-TREASURY_WALLET="BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3"
-
-# Credit pricing
-CREDITS_PACKAGE_SMALL_AMOUNT="100"
-CREDITS_PACKAGE_SMALL_TOKENS="1000000000"
-CREDITS_PACKAGE_MEDIUM_AMOUNT="500"
-CREDITS_PACKAGE_MEDIUM_TOKENS="4500000000"
-CREDITS_PACKAGE_LARGE_AMOUNT="1200"
-CREDITS_PACKAGE_LARGE_TOKENS="10000000000"
+TREASURY_WALLET="${TREASURY_WALLET}"
 
 # Docker
 DOCKER_SOCKET="/var/run/docker.sock"
@@ -81,12 +80,12 @@ CONTAINER_DEFAULT_HOURS="4"
 AGENT_ZERO_IMAGE="frdel/agent-zero:latest"
 OPENCLAW_IMAGE="openclaw/openclaw:latest"
 
-# Cloudflare (fill in when you have a domain)
+# Cloudflare
 CF_API_EMAIL=""
 CF_DNS_API_TOKEN=""
 ENVEOF
 
-echo "  .env created with generated JWT secret"
+echo "  .env created with generated secrets"
 
 # --- 4. Traefik setup ---
 echo "[4/7] Setting up Traefik..."
@@ -95,7 +94,7 @@ touch traefik/acme/acme.json
 chmod 600 traefik/acme/acme.json
 
 # --- 5. Build and launch ---
-echo "[5/7] Building and launching (this takes 2-3 minutes)..."
+echo "[5/7] Building and launching..."
 docker compose up -d --build
 
 echo "  Waiting for services to be healthy..."
@@ -103,7 +102,7 @@ sleep 10
 
 # Wait for db to be ready
 for i in $(seq 1 30); do
-  if docker compose exec -T db pg_isready -U agentplatform &> /dev/null; then
+  if docker compose exec -T db pg_isready -U "${DB_USER}" &> /dev/null; then
     echo "  Database is ready"
     break
   fi
@@ -123,15 +122,13 @@ done
 
 # --- 6. Database setup ---
 echo "[6/7] Setting up database..."
-docker compose exec -T app npx prisma db push --accept-data-loss
+docker compose exec -T app npx prisma db push
 docker compose exec -T app npx tsx prisma/seed.ts
 
 # --- 7. Network security ---
 echo "[7/7] Setting up network policies..."
-if iptables -L DOCKER-USER &> /dev/null 2>&1; then
-  bash scripts/setup-iptables.sh
-else
-  echo "  Skipping iptables (DOCKER-USER chain not available yet)"
+if [ -f scripts/setup-iptables.sh ]; then
+  bash scripts/setup-iptables.sh || echo "  Warning: iptables setup failed"
 fi
 
 # --- Done ---
@@ -140,15 +137,10 @@ echo "========================================="
 echo "  Deployment complete!"
 echo "========================================="
 echo ""
-echo "  Site: http://66.179.241.33"
-echo "  Treasury: BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3"
-echo ""
-echo "  Services:"
-docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+echo "  Site: http://${PUBLIC_IP}"
 echo ""
 echo "  Next steps:"
-echo "  1. Visit http://66.179.241.33 to verify"
-echo "  2. Buy a domain and point *.domain + domain -> 66.179.241.33"
-echo "  3. Update NEXT_PUBLIC_DOMAIN in .env and restart: docker compose restart app"
-echo "  4. On token launch day: update TOKEN_MINT in .env and restart app"
+echo "  1. Point your domain to ${PUBLIC_IP}"
+echo "  2. Update NEXT_PUBLIC_DOMAIN in .env"
+echo "  3. Restart: docker compose up -d"
 echo ""
