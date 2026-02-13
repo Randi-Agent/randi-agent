@@ -56,6 +56,15 @@ function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Auto-trigger sign-in when wallet connects but user is not authenticated
+  useEffect(() => {
+    if (connected && publicKey && signMessage && !user && !loading) {
+      signIn().catch((err) => {
+        console.error("Auto sign-in failed:", err);
+      });
+    }
+  }, [connected, publicKey, signMessage, user, loading, signIn]);
+
   const signIn = useCallback(async () => {
     if (!publicKey || !signMessage) return;
 

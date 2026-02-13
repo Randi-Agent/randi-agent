@@ -13,6 +13,21 @@ DB_PASSWORD=$(openssl rand -hex 16)
 JWT_SECRET=$(openssl rand -hex 32)
 TREASURY_WALLET="BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3"
 
+# Validate required Cloudflare credentials for HTTPS cert generation
+if [ -z "${CF_API_EMAIL:-}" ]; then
+  echo "ERROR: CF_API_EMAIL environment variable is not set."
+  echo "  This is required for Let's Encrypt certificate generation via Cloudflare DNS challenge."
+  echo "  Export it before running this script: export CF_API_EMAIL=\"your@email.com\""
+  exit 1
+fi
+
+if [ -z "${CF_DNS_API_TOKEN:-}" ]; then
+  echo "ERROR: CF_DNS_API_TOKEN environment variable is not set."
+  echo "  This is required for Let's Encrypt certificate generation via Cloudflare DNS challenge."
+  echo "  Export it before running this script: export CF_DNS_API_TOKEN=\"your-token\""
+  exit 1
+fi
+
 # --- 1. Install Docker if needed ---
 if ! command -v docker &> /dev/null; then
   echo "[1/7] Installing Docker..."
@@ -81,8 +96,8 @@ AGENT_ZERO_IMAGE="frdel/agent-zero:latest"
 OPENCLAW_IMAGE="openclaw/openclaw:latest"
 
 # Cloudflare
-CF_API_EMAIL=""
-CF_DNS_API_TOKEN=""
+CF_API_EMAIL="${CF_API_EMAIL}"
+CF_DNS_API_TOKEN="${CF_DNS_API_TOKEN}"
 ENVEOF
 
 echo "  .env created with generated secrets"

@@ -34,3 +34,14 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Self-Hosted Deployment
+
+Before running `scripts/deploy.sh`, you must set the following environment variables for HTTPS certificate generation via Cloudflare DNS challenge:
+
+```bash
+export CF_API_EMAIL="your-cloudflare-email@example.com"
+export CF_DNS_API_TOKEN="your-cloudflare-api-token"
+```
+
+These are required by Traefik to obtain Let's Encrypt TLS certificates. The deploy script will exit with an error if they are not set. See `.env.example` for all available configuration options.
