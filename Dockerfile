@@ -6,11 +6,14 @@ FROM base AS builder
 ENV DATABASE_URL="postgresql://localhost:5432/db?schema=public"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-COPY package.json ./
-RUN npm install
+
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
+
 COPY . .
 RUN npx prisma generate
-RUN npm run build
+
+RUN npm run build 2>&1 | tee build.log || (tail -100 build.log && exit 1)
 
 FROM base AS runner
 ENV NODE_ENV=production
