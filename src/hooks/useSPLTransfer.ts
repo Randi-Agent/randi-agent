@@ -7,7 +7,6 @@ import {
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import bs58 from "bs58";
 
 declare global {
   interface Window {
@@ -15,7 +14,6 @@ declare global {
       solana?: {
         isPhantom?: boolean;
         connect(): Promise<{ publicKey: { toString(): string } }>;
-        signAndSendTransaction(tx: Transaction): Promise<{ signature: string }>;
         signTransaction(tx: Transaction): Promise<Transaction>;
       };
     };
@@ -35,7 +33,6 @@ export function useSPLTransfer() {
     }) => {
       setSending(true);
       try {
-        // Use Phantom directly instead of through Privy
         const phantom = window.phantom?.solana;
         if (!phantom?.isPhantom) {
           throw new Error("Phantom wallet not found. Please install Phantom extension.");
@@ -46,13 +43,16 @@ export function useSPLTransfer() {
         const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
         const connection = new Connection(rpcUrl, "confirmed");
 
-        // Get Phantom's public key
+        // Connect to Phantom
         const { publicKey: phantomPubkey } = await phantom.connect();
         const fromWallet = new PublicKey(phantomPubkey.toString());
         const toWallet = new PublicKey(params.recipient);
         const mint = new PublicKey(params.mint);
 
         console.log("From wallet:", fromWallet.toBase58());
+        console.log("Mint:", mint.toBase58());
+        console.log("To wallet (treasury):", toWallet.toBase58());
+        console.log("Amount:", params.amount, "decimals:", params.decimals);
 
         const fromATA = await getAssociatedTokenAddress(mint, fromWallet);
         const toATA = await getAssociatedTokenAddress(mint, toWallet);
@@ -60,6 +60,7 @@ export function useSPLTransfer() {
         console.log("From ATA:", fromATA.toBase58());
         console.log("To ATA:", toATA.toBase58());
 
+        // Build transfer instruction
         const transferIx = createTransferCheckedInstruction(
           fromATA,
           mint,
@@ -71,12 +72,6 @@ export function useSPLTransfer() {
           TOKEN_PROGRAM_ID
         );
 
-        const memoIx = new TransactionInstruction({
-          keys: [{ pubkey: fromWallet, isSigner: true, isWritable: false }],
-          programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
-          data: Buffer.from(params.memo, "utf-8"),
-        });
-
         // Get fresh blockhash
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
         console.log("Blockhash:", blockhash);
@@ -85,13 +80,18 @@ export function useSPLTransfer() {
         tx.recentBlockhash = blockhash;
         tx.feePayer = fromWallet;
         tx.add(transferIx);
-        tx.add(memoIx);
 
-        console.log("Requesting signature and broadcast from Phantom...");
+        console.log("Requesting signature from Phantom...");
 
-        // Phantom's signAndSendTransaction
-        const result = await phantom.signAndSendTransaction(tx);
-        const signature = result.signature;
+        // Sign transaction with Phantom
+        const signedTx = await phantom.signTransaction(tx);
+        console.log("Transaction signed");
+
+        // Broadcast ourselves
+        console.log("Broadcasting transaction...");
+        const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+          skipPreflight: false,
+        });
 
         console.log("Transaction sent:", signature);
 
