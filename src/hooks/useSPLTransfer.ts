@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { PublicKey, Connection, Transaction } from "@solana/web3.js";
+import { PublicKey, Connection, Transaction, TransactionInstruction } from "@solana/web3.js";
 import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
@@ -43,6 +43,7 @@ export function useSPLTransfer() {
         console.log("Recipient (treasury):", params.recipient);
         console.log("Amount (base units):", params.amount);
         console.log("Decimals:", params.decimals);
+        console.log("Memo:", params.memo);
 
         const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
         const connection = new Connection(rpcUrl, "confirmed");
@@ -64,36 +65,7 @@ export function useSPLTransfer() {
         console.log("From ATA:", fromATA.toBase58());
         console.log("To ATA:", toATA.toBase58());
 
-        // Verify token accounts exist and have correct mint
-        console.log("\n=== Verifying Token Accounts ===");
-        
-        try {
-          const fromAccountInfo = await connection.getParsedAccountInfo(fromATA);
-          console.log("From ATA exists:", !!fromAccountInfo.value);
-          if (fromAccountInfo.value && 'parsed' in (fromAccountInfo.value.data as any)) {
-            const parsed = (fromAccountInfo.value.data as any).parsed;
-            console.log("From ATA mint:", parsed.info.mint);
-            console.log("From ATA owner:", parsed.info.owner);
-            console.log("From ATA balance:", parsed.info.tokenAmount?.amount);
-          }
-        } catch (e) {
-          console.error("Error fetching from ATA:", e);
-        }
-
-        try {
-          const toAccountInfo = await connection.getParsedAccountInfo(toATA);
-          console.log("To ATA exists:", !!toAccountInfo.value);
-          if (toAccountInfo.value && 'parsed' in (toAccountInfo.value.data as any)) {
-            const parsed = (toAccountInfo.value.data as any).parsed;
-            console.log("To ATA mint:", parsed.info.mint);
-            console.log("To ATA owner:", parsed.info.owner);
-          }
-        } catch (e) {
-          console.error("Error fetching to ATA:", e);
-        }
-
         // Build transfer instruction
-        console.log("\n=== Building Transaction ===");
         const transferIx = createTransferCheckedInstruction(
           fromATA,
           mint,
@@ -105,9 +77,11 @@ export function useSPLTransfer() {
           TOKEN_PROGRAM_ID
         );
 
-        console.log("Transfer instruction keys:");
-        transferIx.keys.forEach((key, i) => {
-          console.log(`  ${i}: ${key.pubkey.toBase58()} (signer: ${key.isSigner}, writable: ${key.isWritable})`);
+        // Add memo instruction
+        const memoIx = new TransactionInstruction({
+          keys: [{ pubkey: fromWallet, isSigner: true, isWritable: false }],
+          programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"),
+          data: Buffer.from(params.memo, "utf-8"),
         });
 
         // Get fresh blockhash
@@ -118,6 +92,7 @@ export function useSPLTransfer() {
         tx.recentBlockhash = blockhash;
         tx.feePayer = fromWallet;
         tx.add(transferIx);
+        tx.add(memoIx);
 
         console.log("\n=== Requesting Signature ===");
         const signedTx = await phantom.signTransaction(tx);
