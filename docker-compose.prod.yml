@@ -35,8 +35,7 @@ services:
       - internal
 
   app:
-    image: agent-platform-local:latest
-    build: .
+    image: ghcr.io/probabilityexchange-sketch/agent-platform:latest
     container_name: agent-platform-web
     restart: unless-stopped
     depends_on:
