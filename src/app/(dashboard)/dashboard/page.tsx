@@ -17,6 +17,9 @@ export default function DashboardPage() {
   const { balance } = useCredits();
   const [recentSessions, setRecentSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [username, setUsername] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetch("/api/chat/sessions")
@@ -30,6 +33,26 @@ export default function DashboardPage() {
         setLoading(false);
       });
   }, []);
+
+  const handleSaveUsername = async () => {
+    if (!username || username.length < 3) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (e) {
+      console.error("Failed to save username:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -71,6 +94,34 @@ export default function DashboardPage() {
             View Agent Catalog
           </Link>
         </div>
+      </div>
+
+      <div className="glass-card rounded-2xl p-6 mb-8">
+        <h2 className="text-lg font-bold mb-4">Account Setup</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Set a username to create agent containers. This will be used for your unique subdomain.
+        </p>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            placeholder="Enter username (e.g., myname123)"
+            className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            minLength={3}
+            maxLength={20}
+          />
+          <button
+            onClick={handleSaveUsername}
+            disabled={saving || username.length < 3}
+            className="px-6 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold disabled:opacity-50 transition-all"
+          >
+            {saving ? "Saving..." : saved ? "Saved!" : "Save"}
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Only lowercase letters, numbers, and hyphens. 3-20 characters.
+        </p>
       </div>
 
       <div className="mb-8">
