@@ -28,7 +28,10 @@ export function useSPLTransfer() {
         throw new Error("Wallet not connected");
       }
 
-      console.log("Wallet:", wallet.address, "type:", wallet.walletClientType);
+      console.log("Full wallet object:", wallet);
+      console.log("Wallet address:", wallet.address);
+      console.log("Wallet type:", wallet.walletClientType);
+      console.log("Wallet connector:", (wallet as any).connector);
 
       setSending(true);
       try {
@@ -42,6 +45,9 @@ export function useSPLTransfer() {
         console.log("Getting token accounts...");
         const fromATA = await getAssociatedTokenAddress(mint, fromWallet);
         const toATA = await getAssociatedTokenAddress(mint, toWallet);
+
+        console.log("From ATA:", fromATA.toBase58());
+        console.log("To ATA:", toATA.toBase58());
 
         console.log("Building transaction...");
         const transferIx = createTransferCheckedInstruction(
@@ -61,8 +67,9 @@ export function useSPLTransfer() {
           data: Buffer.from(params.memo, "utf-8"),
         });
 
-        // Get fresh blockhash right before signing
+        // Get fresh blockhash
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+        console.log("Blockhash:", blockhash);
 
         const tx = new Transaction();
         tx.recentBlockhash = blockhash;
@@ -75,9 +82,10 @@ export function useSPLTransfer() {
           verifySignatures: false,
         });
 
-        console.log("Requesting signature from wallet...");
-        console.log("Chain:", `solana:${process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet"}`);
+        console.log("Transaction serialized, length:", serializedTx.length);
+        console.log("Requesting signature and broadcast...");
 
+        // Try signAndSendTransaction
         const result = await signAndSendTransaction({
           wallet,
           transaction: serializedTx,
@@ -85,7 +93,21 @@ export function useSPLTransfer() {
         });
 
         const signature = bs58.encode(result.signature);
-        console.log("Transaction sent:", signature);
+        console.log("Result from signAndSendTransaction:", result);
+        console.log("Signature:", signature);
+
+        // Check if transaction is on chain
+        console.log("Checking if transaction exists on chain...");
+        const status = await connection.getSignatureStatus(signature);
+        console.log("Signature status:", status);
+
+        if (!status.value) {
+          // Transaction was NOT broadcast - let's try to send it manually
+          console.log("Transaction NOT on chain, trying manual broadcast...");
+          
+          // The wallet signed but didn't broadcast. We need a different approach.
+          throw new Error("Wallet signed but did not broadcast the transaction. Please try again and approve quickly.");
+        }
 
         // Wait for confirmation
         console.log("Waiting for confirmation...");
