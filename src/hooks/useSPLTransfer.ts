@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { PublicKey, Connection, TransactionMessage, VersionedTransaction, TransactionInstruction } from "@solana/web3.js";
+import { PublicKey, Connection, Transaction, TransactionInstruction } from "@solana/web3.js";
 import {
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
@@ -59,31 +59,27 @@ export function useSPLTransfer() {
           data: Buffer.from(params.memo, "utf-8"),
         });
 
-        // Get fresh blockhash right before signing
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-
-        const message = new TransactionMessage({
-          payerKey: fromWallet,
-          recentBlockhash: blockhash,
-          instructions: [transferIx, memoIx],
-        }).compileToV0Message();
-
-        const tx = new VersionedTransaction(message);
+        // Create transaction with dummy blockhash - Privy will replace it with a fresh one
+        const tx = new Transaction();
+        tx.recentBlockhash = "11111111111111111111111111111111";
+        tx.feePayer = fromWallet;
+        tx.add(transferIx);
+        tx.add(memoIx);
 
         const { signature } = await signAndSendTransaction({
           wallet,
-          transaction: tx.serialize(),
+          transaction: tx.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false,
+          }),
           chain: `solana:${process.env.NEXT_PUBLIC_SOLANA_NETWORK || "devnet"}`,
         });
 
         const signatureBase58 = bs58.encode(signature);
         
-        // Confirm with the same blockhash info
-        await connection.confirmTransaction({
-          signature: signatureBase58,
-          blockhash,
-          lastValidBlockHeight,
-        }, "confirmed");
+        // Wait for confirmation
+        console.log("Transaction sent:", signatureBase58);
+        await connection.confirmTransaction(signatureBase58, "confirmed");
 
         return signatureBase58;
       } finally {
