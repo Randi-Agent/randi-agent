@@ -7,6 +7,7 @@ import { signToken } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/db/prisma";
 import { isValidSolanaAddress } from "@/lib/solana/validation";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
+import { isBypassWallet, getBypassCredits } from "@/lib/credits/bypass";
 
 const schema = z.object({
   wallet: z.string().refine(isValidSolanaAddress, "Invalid wallet address"),
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       walletAddress: user.walletAddress,
       username: user.username,
-      creditBalance: user.creditBalance,
+      creditBalance: isBypassWallet(wallet) ? getBypassCredits() : user.creditBalance,
     },
   });
 

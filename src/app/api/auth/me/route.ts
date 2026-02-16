@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthFromCookies } from "@/lib/auth/middleware";
 import { prisma } from "@/lib/db/prisma";
 import { isValidUsername } from "@/lib/utils/subdomain";
+import { isBypassWallet, getBypassCredits } from "@/lib/credits/bypass";
 
 export async function GET() {
   const auth = await getAuthFromCookies();
@@ -24,7 +25,12 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ user });
+  return NextResponse.json({
+    user: {
+      ...user,
+      creditBalance: isBypassWallet(user.walletAddress) ? getBypassCredits() : user.creditBalance,
+    },
+  });
 }
 
 const usernameSchema = z.object({
@@ -81,5 +87,10 @@ export async function PATCH(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ user });
+  return NextResponse.json({
+    user: {
+      ...user,
+      creditBalance: isBypassWallet(user.walletAddress) ? getBypassCredits() : user.creditBalance,
+    },
+  });
 }

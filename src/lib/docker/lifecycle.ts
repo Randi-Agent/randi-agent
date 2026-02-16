@@ -1,5 +1,6 @@
 import { docker } from "./client";
 import { prisma } from "@/lib/db/prisma";
+import { isBypassWallet } from "@/lib/credits/bypass";
 
 export async function stopContainer(containerId: string): Promise<void> {
   const container = await prisma.container.findUnique({
@@ -32,7 +33,10 @@ export async function stopContainer(containerId: string): Promise<void> {
       data: { status: "STOPPED", stoppedAt: now },
     });
 
-    if (refundCredits > 0) {
+    const user = await tx.user.findUnique({ where: { id: container.userId } });
+    const isBypass = user && isBypassWallet(user.walletAddress);
+
+    if (refundCredits > 0 && !isBypass) {
       await tx.user.update({
         where: { id: container.userId },
         data: { creditBalance: { increment: refundCredits } },
@@ -66,8 +70,9 @@ export async function extendContainer(
     if (container.status !== "RUNNING") throw new Error("Container not running");
 
     const creditsNeeded = additionalHours * container.agent.creditsPerHour;
+    const isBypass = isBypassWallet(container.user.walletAddress);
 
-    if (container.user.creditBalance < creditsNeeded) {
+    if (!isBypass && container.user.creditBalance < creditsNeeded) {
       throw new Error("Insufficient credits");
     }
 
@@ -83,21 +88,23 @@ export async function extendContainer(
       },
     });
 
-    await tx.user.update({
-      where: { id: container.userId },
-      data: { creditBalance: { decrement: creditsNeeded } },
-    });
+    if (!isBypass) {
+      await tx.user.update({
+        where: { id: container.userId },
+        data: { creditBalance: { decrement: creditsNeeded } },
+      });
 
-    await tx.creditTransaction.create({
-      data: {
-        userId: container.userId,
-        type: "USAGE",
-        status: "CONFIRMED",
-        amount: -creditsNeeded,
-        containerId: container.id,
-        description: `Extended ${container.subdomain} by ${additionalHours}h`,
-      },
-    });
+      await tx.creditTransaction.create({
+        data: {
+          userId: container.userId,
+          type: "USAGE",
+          status: "CONFIRMED",
+          amount: -creditsNeeded,
+          containerId: container.id,
+          description: `Extended ${container.subdomain} by ${additionalHours}h`,
+        },
+      });
+    }
 
     return { newExpiresAt, creditsCharged: creditsNeeded };
   });
