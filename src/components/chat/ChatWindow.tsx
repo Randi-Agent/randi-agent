@@ -8,7 +8,7 @@ export interface Message {
     id: string;
     role: "user" | "assistant" | "system";
     content: string;
-    createdAt: Date;
+    createdAt: Date | string;
 }
 
 interface ChatWindowProps {
@@ -37,6 +37,10 @@ export function ChatWindow({
     useEffect(() => {
         setCurrentSessionId(sessionId);
     }, [sessionId]);
+
+    useEffect(() => {
+        setMessages(initialMessages);
+    }, [initialMessages]);
 
     const handleSendMessage = async (content: string) => {
         if (!content.trim()) return;

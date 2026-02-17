@@ -8,6 +8,11 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message }: MessageBubbleProps) {
     const isUser = message.role === "user";
+    const messageDate =
+        message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
+    const timestamp = Number.isNaN(messageDate.getTime())
+        ? null
+        : messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     return (
         <div className={`flex ${isUser ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
@@ -20,11 +25,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
                     {message.content}
                 </div>
-                <div
-                    className={`text-[10px] mt-1 opacity-50 ${isUser ? "text-right" : "text-left"}`}
-                >
-                    {message.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+                {timestamp && (
+                    <div
+                        className={`text-[10px] mt-1 opacity-50 ${isUser ? "text-right" : "text-left"}`}
+                    >
+                        {timestamp}
+                    </div>
+                )}
             </div>
         </div>
     );

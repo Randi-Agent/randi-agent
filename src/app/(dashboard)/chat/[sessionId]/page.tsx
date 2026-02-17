@@ -22,8 +22,25 @@ export default function ChatSessionPage() {
             fetch(`/api/chat/sessions/${sessionId}`)
                 .then((res) => res.json())
                 .then((data) => {
-                    setInitialMessages(data.messages || []);
-                    setAgentName(data.agent.name);
+                    const messages = Array.isArray(data?.messages)
+                        ? data.messages.map((message: {
+                            id?: string;
+                            role?: "user" | "assistant" | "system";
+                            content?: string;
+                            createdAt?: string | Date;
+                        }) => ({
+                            id: message.id || crypto.randomUUID(),
+                            role: message.role || "assistant",
+                            content: typeof message.content === "string" ? message.content : "",
+                            createdAt:
+                                message.createdAt instanceof Date
+                                    ? message.createdAt
+                                    : new Date(message.createdAt || Date.now()),
+                        }))
+                        : [];
+
+                    setInitialMessages(messages);
+                    setAgentName(typeof data?.agent?.name === "string" ? data.agent.name : "Agent");
                     setLoading(false);
                 })
                 .catch((err) => {
