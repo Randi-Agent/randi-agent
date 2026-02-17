@@ -29,7 +29,7 @@ interface ParsedAgentToolConfig {
   fallbackTools: string[];
 }
 
-function resolveComposioUserId(userId: string): string {
+export function resolveComposioUserId(userId: string): string {
   const override = process.env.COMPOSIO_ENTITY_ID?.trim();
   if (override) return override;
   return userId || "default";

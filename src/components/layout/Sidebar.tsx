@@ -8,6 +8,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "grid" },
   { href: "/agents", label: "Agents", icon: "cpu" },
   { href: "/chat", label: "Chat", icon: "message" },
+  { href: "/integrations", label: "Integrations", icon: "link" },
   { href: "/credits", label: "Credits", icon: "coins" },
 ];
 
@@ -15,6 +16,7 @@ const icons: Record<string, string> = {
   grid: "M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z",
   cpu: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z",
   message: "M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
+  link: "M13.828 10.172a4 4 0 000 5.656l.586.586a4 4 0 005.656-5.656l-1.172-1.172a4 4 0 00-5.656 0M10.172 13.828a4 4 0 000-5.656l-.586-.586a4 4 0 10-5.656 5.656l1.172 1.172a4 4 0 005.656 0",
   coins: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
 };
 
