@@ -7,14 +7,14 @@ import { RandiLogo } from "@/components/branding/RandiLogo";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const { user, signIn, loading } = useAuth();
+  const { signIn, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated) {
       router.push("/dashboard");
     }
-  }, [user, router]);
+  }, [isAuthenticated, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/50">
@@ -33,10 +33,10 @@ export default function LoginPage() {
         <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center gap-4">
           <button
             onClick={() => signIn()}
-            disabled={loading}
+            disabled={loading || isAuthenticated}
             className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            {loading ? "Loading..." : "Sign In"}
+            {isAuthenticated ? "Finalizing sign in..." : loading ? "Loading..." : "Sign In"}
           </button>
           <p className="text-xs text-muted-foreground">
             Sign in with Solana wallet or Email
