@@ -15,6 +15,25 @@ function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function isSolanaChain(chainType: string | null): boolean {
+  if (!chainType) return false;
+  const normalized = chainType.toLowerCase();
+  return normalized === "solana" || normalized.startsWith("solana:");
+}
+
+function extractAddress(account: UnknownRecord): string | null {
+  const direct =
+    asString(account.address) ||
+    asString(account.wallet_address) ||
+    asString(account.walletAddress) ||
+    asString(account.public_address) ||
+    asString(account.publicAddress);
+  if (direct) return direct;
+
+  const nestedWallet = asRecord(account.wallet);
+  return nestedWallet ? asString(nestedWallet.address) : null;
+}
+
 function extractLinkedAccounts(user: UnknownRecord): UnknownRecord[] {
   const snakeCase = user.linked_accounts;
   if (Array.isArray(snakeCase)) {
@@ -33,16 +52,26 @@ function collectSolanaWallets(user: UnknownRecord): string[] {
   const wallets = new Set<string>();
 
   for (const account of extractLinkedAccounts(user)) {
-    const type = asString(account.type);
-    const chainType = asString(account.chain_type) || asString(account.chainType);
-    if (type !== "wallet" || chainType !== "solana") {
+    const chainType =
+      asString(account.chain_type) ||
+      asString(account.chainType) ||
+      asString(account.chain);
+
+    const walletClientType =
+      asString(account.wallet_client_type) ||
+      asString(account.walletClientType) ||
+      asString(account.wallet_type) ||
+      asString(account.walletType);
+
+    const looksSolana =
+      isSolanaChain(chainType) ||
+      (walletClientType ? walletClientType.toLowerCase().includes("solana") : false);
+
+    if (!looksSolana) {
       continue;
     }
 
-    const address =
-      asString(account.address) ||
-      asString(account.wallet_address) ||
-      asString(account.walletAddress);
+    const address = extractAddress(account);
 
     if (address && isValidSolanaAddress(address)) {
       wallets.add(address);
@@ -82,10 +111,12 @@ export async function resolvePrivyWallet(
     throw new Error("Unable to validate Privy access token");
   }
 
-  const payload = asRecord(await response.json());
-  if (!payload) {
+  const rawPayload = asRecord(await response.json());
+  if (!rawPayload) {
     throw new Error("Invalid Privy user payload");
   }
+
+  const payload = asRecord(rawPayload.user) || rawPayload;
 
   const solanaWallets = collectSolanaWallets(payload);
   if (solanaWallets.length === 0) {
