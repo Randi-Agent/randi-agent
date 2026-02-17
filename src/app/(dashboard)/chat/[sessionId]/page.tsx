@@ -90,6 +90,11 @@ export default function ChatSessionPage() {
                     agentId={agentId || ""}
                     sessionId={sessionId}
                     initialMessages={initialMessages}
+                    onSessionCreated={(newSessionId) => {
+                        if (!sessionId) {
+                            router.replace(`/chat/${newSessionId}`);
+                        }
+                    }}
                 />
             </div>
         </div>

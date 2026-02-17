@@ -15,17 +15,28 @@ interface ChatWindowProps {
     agentId: string;
     sessionId?: string;
     initialMessages?: Message[];
+    onSessionCreated?: (sessionId: string) => void;
 }
 
-export function ChatWindow({ agentId, sessionId, initialMessages = [] }: ChatWindowProps) {
+export function ChatWindow({
+    agentId,
+    sessionId,
+    initialMessages = [],
+    onSessionCreated,
+}: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [isTyping, setIsTyping] = useState(false);
+    const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(sessionId);
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages]);
+
+    useEffect(() => {
+        setCurrentSessionId(sessionId);
+    }, [sessionId]);
 
     const handleSendMessage = async (content: string) => {
         if (!content.trim()) return;
@@ -47,7 +58,7 @@ export function ChatWindow({ agentId, sessionId, initialMessages = [] }: ChatWin
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     agentId,
-                    sessionId,
+                    sessionId: currentSessionId,
                     message: content,
                 }),
             });
@@ -58,6 +69,11 @@ export function ChatWindow({ agentId, sessionId, initialMessages = [] }: ChatWin
 
             // Handle streaming or simple response
             const data = await response.json();
+
+            if (!currentSessionId && typeof data.sessionId === "string" && data.sessionId.length > 0) {
+                setCurrentSessionId(data.sessionId);
+                onSessionCreated?.(data.sessionId);
+            }
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
