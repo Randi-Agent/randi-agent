@@ -22,6 +22,8 @@ const schema = z
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_TOOL_LOOP_STEPS = 4;
+const TOOL_USAGE_SYSTEM_INSTRUCTION =
+  "You have access to tools. For requests involving external services (GitHub, Slack, Notion, Gmail, Calendar, Hacker News), call the best matching tool first before replying. Do not claim lack of access when tools are available.";
 
 type ChatMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
@@ -32,6 +34,20 @@ interface ToolExecutionLog {
   arguments: string;
   result?: unknown;
   error?: string;
+}
+
+function shouldForceToolCall(message: string): boolean {
+  const normalized = message.toLowerCase();
+  const mentionsService =
+    /\b(github|slack|notion|gmail|calendar|google calendar|hacker ?news)\b/.test(
+      normalized
+    );
+  const mentionsAction =
+    /\b(connect|list|show|get|find|search|create|update|delete|send|read|use|check|sync)\b/.test(
+      normalized
+    );
+
+  return mentionsService && mentionsAction;
 }
 
 function parseJsonSafely(value: string): unknown {
@@ -82,7 +98,8 @@ async function runToolEnabledChat(
   model: string,
   baseMessages: ChatMessageParam[],
   tools: ChatTool[],
-  userId: string
+  userId: string,
+  forceFirstToolCall: boolean
 ): Promise<{ responseText: string; toolCalls: ToolExecutionLog[] }> {
   if (tools.length === 0) {
     return {
@@ -100,7 +117,7 @@ async function runToolEnabledChat(
         model,
         messages,
         tools,
-        tool_choice: "auto",
+        tool_choice: forceFirstToolCall && iteration === 0 ? "required" : "auto",
       });
 
       const assistantMessage = chatResponse.choices[0]?.message;
@@ -229,22 +246,29 @@ export async function POST(req: NextRequest) {
         .filter((storedMessage): storedMessage is ChatMessageParam => storedMessage !== null);
     }
 
-    const messages: ChatMessageParam[] = [
-      { role: "system", content: agent.systemPrompt },
-      ...historyMessages,
-      { role: "user", content: message },
-    ];
-
     let composioTools: ChatTool[] = [];
     if (agent.tools) {
       composioTools = await getAgentToolsFromConfig(agent.tools, auth.userId);
     }
 
+    const messages: ChatMessageParam[] = [
+      { role: "system", content: agent.systemPrompt },
+      ...(composioTools.length > 0
+        ? ([{ role: "system", content: TOOL_USAGE_SYSTEM_INSTRUCTION }] as ChatMessageParam[])
+        : []),
+      ...historyMessages,
+      { role: "user", content: message },
+    ];
+
+    const forceFirstToolCall =
+      composioTools.length > 0 && shouldForceToolCall(message);
+
     const { responseText, toolCalls } = await runToolEnabledChat(
       model,
       messages,
       composioTools,
-      auth.userId
+      auth.userId,
+      forceFirstToolCall
     );
     const normalizedResponseText = responseText.trim() || "I could not generate a response.";
 
