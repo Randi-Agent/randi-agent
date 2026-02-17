@@ -21,6 +21,37 @@ function normalizeEnvString(value: string | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function normalizeOrigin(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().replace(/^['"]|['"]$/g, "");
+  if (!normalized) return null;
+
+  try {
+    return new URL(normalized).origin;
+  } catch {
+    return null;
+  }
+}
+
+function resolvePrivyOrigin(originHint?: string): string | null {
+  const fromHint = normalizeOrigin(originHint);
+  if (fromHint) return fromHint;
+
+  const fromAppUrl = normalizeOrigin(normalizeEnvString(process.env.NEXT_PUBLIC_APP_URL));
+  if (fromAppUrl) return fromAppUrl;
+
+  const domain = normalizeEnvString(process.env.NEXT_PUBLIC_DOMAIN);
+  if (domain) {
+    const candidate = domain.startsWith("http://") || domain.startsWith("https://")
+      ? domain
+      : `https://${domain}`;
+    const fromDomain = normalizeOrigin(candidate);
+    if (fromDomain) return fromDomain;
+  }
+
+  return null;
+}
+
 function isSolanaChain(chainType: string | null): boolean {
   if (!chainType) return false;
   const normalized = chainType.toLowerCase();
@@ -95,7 +126,8 @@ function collectSolanaWallets(user: UnknownRecord): string[] {
 
 export async function resolvePrivyWallet(
   accessToken: string,
-  requestedWallet?: string
+  requestedWallet?: string,
+  originHint?: string
 ): Promise<string> {
   const appId =
     normalizeEnvString(process.env.PRIVY_APP_ID) ||
@@ -104,14 +136,21 @@ export async function resolvePrivyWallet(
     throw new Error("NEXT_PUBLIC_PRIVY_APP_ID is not configured");
   }
 
+  const origin = resolvePrivyOrigin(originHint);
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "privy-app-id": appId,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+  if (origin) {
+    headers.Origin = origin;
+    headers.Referer = `${origin}/`;
+  }
+
   const response = await fetch(`${PRIVY_BASE_URL}/api/v1/users/me`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "privy-app-id": appId,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    headers,
     cache: "no-store",
   });
 

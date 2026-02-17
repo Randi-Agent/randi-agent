@@ -35,14 +35,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const requestOrigin =
+    request.headers.get("origin") ||
+    request.nextUrl.origin ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    undefined;
+
   let wallet: string;
   try {
-    wallet = await resolvePrivyWallet(accessToken, parsed.data.wallet);
+    wallet = await resolvePrivyWallet(accessToken, parsed.data.wallet, requestOrigin);
   } catch (error) {
     // Some wallet adapters can provide a selected address that differs from the
     // linked wallet returned by Privy. Fall back to any linked Solana wallet.
     try {
-      wallet = await resolvePrivyWallet(accessToken);
+      wallet = await resolvePrivyWallet(accessToken, undefined, requestOrigin);
     } catch (fallbackError) {
       const primaryReason =
         error instanceof Error ? error.message : "Unknown Privy verification error";
