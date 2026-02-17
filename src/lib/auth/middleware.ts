@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { verifyToken, type TokenPayload } from "./jwt";
+import { verifyToken } from "./jwt";
 
 export interface AuthedRequest {
   userId: string;
@@ -28,11 +28,9 @@ export async function requireAuth(): Promise<AuthedRequest> {
   const auth = await getAuthFromCookies();
 
   if (!auth) {
-    console.log("requireAuth: No auth found in cookies");
     throw new AuthError("Unauthorized");
   }
 
-  console.log("requireAuth: Auth found - userId:", auth.userId, "wallet:", auth.wallet);
   return auth;
 }
 
@@ -51,7 +49,13 @@ export function handleAuthError(error: unknown): NextResponse {
   // Handle common Prisma or validation errors if they have specific patterns
   const errorMessage = error instanceof Error ? error.message : "Internal server error";
 
-  console.error("API Error:", error);
+  if (process.env.NODE_ENV !== "production") {
+    console.error("API Error:", error);
+  } else if (error instanceof Error) {
+    console.error("API Error:", error.name);
+  } else {
+    console.error("API Error: non-error thrown");
+  }
 
   // Don't leak sensitive error details in production
   const displayMessage = process.env.NODE_ENV === "production" && !(error instanceof AuthError)

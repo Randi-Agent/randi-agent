@@ -12,12 +12,6 @@ const nextConfig: NextConfig = {
     config.externals["@solana-program/token"] = "commonjs @solana-program/token";
     return config;
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
 };
 
 export default nextConfig;

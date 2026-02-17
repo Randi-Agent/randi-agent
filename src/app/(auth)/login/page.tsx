@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { RandiLogo } from "@/components/branding/RandiLogo";
@@ -9,33 +9,12 @@ import { useAuth } from "@/hooks/useAuth";
 export default function LoginPage() {
   const { user, signIn, loading } = useAuth();
   const router = useRouter();
-  const devBypass = process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS === "true";
-  const devBypassTriggered = useRef(false);
 
   useEffect(() => {
-    if (devBypass && !devBypassTriggered.current) {
-      devBypassTriggered.current = true;
-      void handleDevBypass();
-      return;
-    }
-
     if (user) {
       router.push("/dashboard");
     }
-  }, [user, router, devBypass]);
-
-  const handleDevBypass = async () => {
-    try {
-      await fetch("/api/auth/dev-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: "dev-bypass-wallet" }),
-      });
-      router.push("/dashboard");
-    } catch (err) {
-      console.error("Dev bypass failed", err);
-    }
-  };
+  }, [user, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/50">
@@ -59,14 +38,6 @@ export default function LoginPage() {
           >
             {loading ? "Loading..." : "Sign In"}
           </button>
-          {devBypass ? (
-            <button
-              onClick={handleDevBypass}
-              className="w-full bg-muted text-foreground font-bold py-3 px-6 rounded-lg border border-border hover:bg-muted/80 transition-colors"
-            >
-              Continue without signing in (dev)
-            </button>
-          ) : null}
           <p className="text-xs text-muted-foreground">
             Sign in with Solana wallet or Email
           </p>

@@ -3,14 +3,17 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
-const store = new Map<string, RateLimitEntry>();
+const inMemoryStore = new Map<string, RateLimitEntry>();
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/\/$/, "");
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redisEnabled = Boolean(redisUrl && redisToken);
 
 // Clean up expired entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [key, entry] of store) {
+  for (const [key, entry] of inMemoryStore) {
     if (entry.resetAt < now) {
-      store.delete(key);
+      inMemoryStore.delete(key);
     }
   }
 }, 5 * 60 * 1000);
@@ -27,15 +30,80 @@ export const RATE_LIMITS = {
   general: { maxRequests: 30, windowMs: 60 * 1000 },
 } as const;
 
-export function checkRateLimit(
+type RateLimitResult = { allowed: boolean; remaining: number; resetAt: number };
+
+function parsePipelineResult(entry: unknown): unknown {
+  if (Array.isArray(entry)) {
+    return entry[1];
+  }
+
+  if (entry && typeof entry === "object" && "result" in entry) {
+    return (entry as { result: unknown }).result;
+  }
+
+  return undefined;
+}
+
+async function checkRedisRateLimit(
   key: string,
   config: RateLimitConfig
-): { allowed: boolean; remaining: number; resetAt: number } {
+): Promise<RateLimitResult | null> {
+  if (!redisEnabled) {
+    return null;
+  }
+
+  const redisKey = `ratelimit:${key}`;
   const now = Date.now();
-  const entry = store.get(key);
+
+  try {
+    const response = await fetch(`${redisUrl}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${redisToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["INCR", redisKey],
+        ["PEXPIRE", redisKey, config.windowMs, "NX"],
+        ["PTTL", redisKey],
+      ]),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error("Redis rate-limit request failed");
+    }
+
+    const payload = (await response.json()) as unknown[];
+    const count = Number(parsePipelineResult(payload[0]));
+    const ttlMs = Number(parsePipelineResult(payload[2]));
+
+    if (!Number.isFinite(count) || count <= 0) {
+      return null;
+    }
+
+    const effectiveTtlMs =
+      Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : config.windowMs;
+    const remaining = Math.max(config.maxRequests - count, 0);
+    return {
+      allowed: count <= config.maxRequests,
+      remaining,
+      resetAt: now + effectiveTtlMs,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function checkInMemoryRateLimit(
+  key: string,
+  config: RateLimitConfig
+): RateLimitResult {
+  const now = Date.now();
+  const entry = inMemoryStore.get(key);
 
   if (!entry || entry.resetAt < now) {
-    store.set(key, { count: 1, resetAt: now + config.windowMs });
+    inMemoryStore.set(key, { count: 1, resetAt: now + config.windowMs });
     return { allowed: true, remaining: config.maxRequests - 1, resetAt: now + config.windowMs };
   }
 
@@ -45,4 +113,16 @@ export function checkRateLimit(
 
   entry.count++;
   return { allowed: true, remaining: config.maxRequests - entry.count, resetAt: entry.resetAt };
+}
+
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const redisResult = await checkRedisRateLimit(key, config);
+  if (redisResult) {
+    return redisResult;
+  }
+
+  return checkInMemoryRateLimit(key, config);
 }

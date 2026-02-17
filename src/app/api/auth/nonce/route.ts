@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { allowed } = checkRateLimit(
+  const { allowed } = await checkRateLimit(
     `auth:nonce:${parsed.data.wallet}`,
     RATE_LIMITS.auth
   );

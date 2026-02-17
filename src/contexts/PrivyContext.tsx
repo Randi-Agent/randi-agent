@@ -5,18 +5,11 @@ import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import { type ReactNode } from "react";
 
 export function PrivyContextProvider({ children }: { children: ReactNode }) {
-  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "cmlmjskmp00zo0dl7qkdoef31";
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   if (!appId) {
-    console.warn("NEXT_PUBLIC_PRIVY_APP_ID is not set in environment variables");
+    throw new Error("NEXT_PUBLIC_PRIVY_APP_ID is required");
   }
-
-  console.log("Privy config loaded", {
-    appId,
-    walletChainType: "solana-only",
-    walletList: ["phantom", "solflare", "backpack"],
-    loginMethods: ["wallet", "email"],
-  });
 
   return (
     <PrivyProvider

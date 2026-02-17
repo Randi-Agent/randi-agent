@@ -4,11 +4,20 @@ import { prisma } from "@/lib/db/prisma";
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    // Hardcode a fallback for build time even in production to avoid build failures
-    return new TextEncoder().encode("cfccab302d52a236dd87d23987c61c242146d34d16d6d7a0ea7e08d4d77175af");
+  if (secret && secret.length >= 32) {
+    return new TextEncoder().encode(secret);
   }
-  return new TextEncoder().encode(secret);
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set to at least 32 characters");
+  }
+
+  // Development-only fallback to keep local environments functional.
+  const devFallback = secret || "dev-only-jwt-secret-change-me";
+  console.warn(
+    "JWT_SECRET is missing or too short; using an insecure development fallback"
+  );
+  return new TextEncoder().encode(devFallback);
 };
 
 const JWT_SECRET = getJwtSecret();

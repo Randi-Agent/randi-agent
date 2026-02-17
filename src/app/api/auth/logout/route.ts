@@ -1,22 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getAuthFromCookies } from "@/lib/auth/middleware";
 import { revokeSession } from "@/lib/auth/jwt";
 
 export async function POST() {
-    const auth = await getAuthFromCookies();
+  const auth = await getAuthFromCookies();
 
-    if (auth && auth.jti) {
-        await revokeSession(auth.jti);
-    }
+  if (auth?.jti) {
+    await revokeSession(auth.jti);
+  }
 
-    const response = NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("auth-token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    path: "/",
+  });
 
-    // Clear the cookie
-    response.cookies.set("auth-token", "", {
-        httpOnly: true,
-        expires: new Date(0),
-        path: "/",
-    });
-
-    return response;
+  return response;
 }

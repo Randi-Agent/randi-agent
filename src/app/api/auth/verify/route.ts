@@ -7,7 +7,6 @@ import { signToken } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/db/prisma";
 import { isValidSolanaAddress } from "@/lib/solana/validation";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
-import { isBypassWallet, getBypassCredits } from "@/lib/credits/bypass";
 
 const schema = z.object({
   wallet: z.string().refine(isValidSolanaAddress, "Invalid wallet address"),
@@ -28,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const { wallet, signature, nonce } = parsed.data;
 
-  const { allowed } = checkRateLimit(`auth:verify:${wallet}`, RATE_LIMITS.auth);
+  const { allowed } = await checkRateLimit(`auth:verify:${wallet}`, RATE_LIMITS.auth);
   if (!allowed) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -45,8 +44,25 @@ export async function POST(request: NextRequest) {
   // Verify signature
   const message = `Sign in to Agent Platform\nNonce: ${nonce}`;
   const messageBytes = new TextEncoder().encode(message);
-  const signatureBytes = bs58.decode(signature);
-  const publicKeyBytes = bs58.decode(wallet);
+  let signatureBytes: Uint8Array;
+  let publicKeyBytes: Uint8Array;
+
+  try {
+    signatureBytes = bs58.decode(signature);
+    publicKeyBytes = bs58.decode(wallet);
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid signature encoding" },
+      { status: 400 }
+    );
+  }
+
+  if (signatureBytes.length !== 64 || publicKeyBytes.length !== 32) {
+    return NextResponse.json(
+      { error: "Invalid signature payload" },
+      { status: 400 }
+    );
+  }
 
   const isValid = nacl.sign.detached.verify(
     messageBytes,
@@ -73,7 +89,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       walletAddress: user.walletAddress,
       username: user.username,
-      creditBalance: isBypassWallet(wallet) ? getBypassCredits() : user.creditBalance,
+      creditBalance: user.creditBalance,
     },
   });
 

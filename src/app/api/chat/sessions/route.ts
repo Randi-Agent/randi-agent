@@ -1,21 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 
-export async function GET(req: NextRequest) {
-    // In a real app, verify user from Privy
-    // const user = await getAuthFromPrivy(req);
-    // Using a query param or header for now if middleware isn't ready
-    const userId = req.nextUrl.searchParams.get("userId") || "anonymous";
+export async function GET() {
+  try {
+    const auth = await requireAuth();
 
     const sessions = await prisma.chatSession.findMany({
-        where: { userId },
-        include: {
-            agent: {
-                select: { name: true }
-            }
+      where: { userId: auth.userId },
+      include: {
+        agent: {
+          select: { name: true },
         },
-        orderBy: { updatedAt: "desc" },
+      },
+      orderBy: { updatedAt: "desc" },
     });
 
     return NextResponse.json({ sessions });
+  } catch (error) {
+    return handleAuthError(error);
+  }
 }

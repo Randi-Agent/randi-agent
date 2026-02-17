@@ -6,7 +6,6 @@ import { prisma } from "@/lib/db/prisma";
 import { provisionContainer } from "@/lib/docker/provisioner";
 import { cleanupExpiredContainers } from "@/lib/docker/cleanup";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
-import { isBypassWallet } from "@/lib/credits/bypass";
 
 const provisionSchema = z.object({
   agentId: z.string().min(1),
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth();
     userId = auth.userId;
 
-    const { allowed } = checkRateLimit(
+    const { allowed } = await checkRateLimit(
       `provision:${auth.userId}`,
       RATE_LIMITS.provision
     );
@@ -86,32 +85,26 @@ export async function POST(request: NextRequest) {
       if (!user) throw new Error("USER_NOT_FOUND");
 
       const creditsNeeded = hours * agent.creditsPerHour;
-      
-      // Bypass wallet check - skip credit verification
-      if (!isBypassWallet(auth.wallet)) {
-        if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
-      }
+
+      if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
       if (!user.username) throw new Error("USERNAME_REQUIRED");
 
       creditsReserved = creditsNeeded;
 
-      // Skip credit deduction for bypass wallets
-      if (!isBypassWallet(auth.wallet)) {
-        await tx.user.update({
-          where: { id: auth.userId },
-          data: { creditBalance: { decrement: creditsNeeded } },
-        });
+      await tx.user.update({
+        where: { id: auth.userId },
+        data: { creditBalance: { decrement: creditsNeeded } },
+      });
 
-        await tx.creditTransaction.create({
-          data: {
-            userId: auth.userId,
-            type: "USAGE",
-            status: "CONFIRMED",
-            amount: -creditsNeeded,
-            description: `Provisioning ${agent.name} for ${hours}h`,
-          },
-        });
-      }
+      await tx.creditTransaction.create({
+        data: {
+          userId: auth.userId,
+          type: "USAGE",
+          status: "CONFIRMED",
+          amount: -creditsNeeded,
+          description: `Provisioning ${agent.name} for ${hours}h`,
+        },
+      });
 
       // Create initial container record
       const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);

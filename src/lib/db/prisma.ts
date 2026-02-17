@@ -1,6 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
-(BigInt.prototype as any).toJSON = function () {
+const bigIntPrototype = BigInt.prototype as bigint & {
+  toJSON?: () => string;
+};
+
+bigIntPrototype.toJSON = function () {
   return this.toString();
 };
 

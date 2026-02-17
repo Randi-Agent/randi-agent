@@ -15,14 +15,14 @@ Violation of these rules constitutes a Hosting Policy Violation and will result 
 
 Focus on helping the user with their legitimate tasks within your designated environment.`;
 
-export const agentZeroConfig: AgentConfigFactory = ({ subdomain, domain }) => ({
+export const agentZeroConfig: AgentConfigFactory = ({ storageKey }) => ({
   image: process.env.AGENT_ZERO_IMAGE || "frdel/agent-zero:latest",
   internalPort: 80,
   env: {
     GUARDIAN_PROMPT,
   },
   volumes: {
-    [`az-${subdomain}-data`]: "/data",
+    [`az-${storageKey}-data`]: "/data",
   },
   memoryLimit: Number(process.env.CONTAINER_MAX_MEMORY) || 4294967296,
   cpuLimit: Number(process.env.CONTAINER_MAX_CPU) || 2000000000,

@@ -16,6 +16,7 @@ export type AgentConfigFactory = (opts: {
   subdomain: string;
   password: string;
   domain: string;
+  storageKey: string;
 }) => AgentContainerConfig;
 
 const agentRegistry: Record<string, AgentConfigFactory> = {

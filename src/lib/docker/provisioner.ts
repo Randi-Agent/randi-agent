@@ -3,6 +3,7 @@ import { getAgentConfig } from "./agents";
 import { generatePassword } from "@/lib/utils/crypto";
 import { generateSubdomain } from "@/lib/utils/subdomain";
 import { prisma } from "@/lib/db/prisma";
+import { createHash } from "crypto";
 
 const DOCKER_NETWORK = process.env.DOCKER_NETWORK || "traefik-net";
 
@@ -11,6 +12,14 @@ export interface ProvisionResult {
   subdomain: string;
   url: string;
   password: string | null;
+}
+
+function buildStorageKey(userId: string, agentSlug: string): string {
+  const hash = createHash("sha256")
+    .update(`${userId}:${agentSlug}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `${agentSlug}-${hash}`;
 }
 
 export async function provisionContainer(
@@ -33,8 +42,13 @@ export async function provisionContainer(
   const domain = process.env.NEXT_PUBLIC_DOMAIN || "localhost";
   const subdomain = generateSubdomain(username, agentSlug);
   const password = generatePassword();
+  const persistentStorageEnabled =
+    process.env.AGENT_PERSISTENT_STORAGE !== "false";
+  const storageKey = persistentStorageEnabled
+    ? buildStorageKey(userId, agentSlug)
+    : subdomain;
 
-  const config = agentConfigFactory({ subdomain, password, domain });
+  const config = agentConfigFactory({ subdomain, password, domain, storageKey });
 
   const fullSubdomain = `${subdomain}.${domain}`;
   const containerName = `ap-${subdomain}`;

@@ -1,22 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isValidEdgeAuthToken } from "@/lib/auth/edge-token";
 
-export function middleware(request: NextRequest) {
+function clearAuthCookie(response: NextResponse): NextResponse {
+  response.cookies.set("auth-token", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 0,
+    path: "/",
+  });
+  return response;
+}
+
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get("auth-token")?.value;
   const { pathname } = request.nextUrl;
 
-  // Force bypass to true for now to unblock the user
-  const devBypass = true;
+  const protectedPath =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/agents") ||
+    pathname.startsWith("/containers") ||
+    pathname.startsWith("/credits");
 
-  // Protect dashboard routes
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/agents") || pathname.startsWith("/containers") || pathname.startsWith("/credits")) {
-    if (!token && !devBypass) {
+  if (protectedPath) {
+    if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const valid = await isValidEdgeAuthToken(token);
+    if (!valid) {
+      return clearAuthCookie(NextResponse.redirect(new URL("/login", request.url)));
     }
   }
 
-  // Redirect logged-in users away from login
   if (pathname === "/login" && token) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const valid = await isValidEdgeAuthToken(token);
+    if (valid) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    return clearAuthCookie(NextResponse.next());
   }
 
   return NextResponse.next();

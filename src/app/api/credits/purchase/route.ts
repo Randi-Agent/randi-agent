@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth();
 
-    const { allowed } = checkRateLimit(
+    const { allowed } = await checkRateLimit(
       `purchase:${auth.userId}`,
       RATE_LIMITS.purchase
     );
