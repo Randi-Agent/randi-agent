@@ -38,10 +38,6 @@ export function ChatWindow({
         setCurrentSessionId(sessionId);
     }, [sessionId]);
 
-    useEffect(() => {
-        setMessages(initialMessages);
-    }, [initialMessages]);
-
     const handleSendMessage = async (content: string) => {
         if (!content.trim()) return;
 

@@ -104,12 +104,22 @@ export default function ChatSessionPage() {
 
             <div className="flex-1 min-h-0">
                 <ChatWindow
+                    key={sessionId || `new-${agentId || "agent"}`}
                     agentId={agentId || ""}
                     sessionId={sessionId}
                     initialMessages={initialMessages}
                     onSessionCreated={(newSessionId) => {
                         if (!sessionId) {
-                            router.replace(`/chat/${newSessionId}`);
+                            if (typeof window !== "undefined") {
+                                const suffix = agentId
+                                    ? `?agentId=${encodeURIComponent(agentId)}`
+                                    : "";
+                                window.history.replaceState(
+                                    window.history.state,
+                                    "",
+                                    `/chat/${newSessionId}${suffix}`
+                                );
+                            }
                         }
                     }}
                 />
