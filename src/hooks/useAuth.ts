@@ -31,11 +31,17 @@ export function useAuth() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ wallet: walletAddress }),
+      // Let the server resolve a linked Solana wallet from Privy identity.
+      // Sending a specific wallet can fail when adapter-selected and linked wallets differ.
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
-      throw new Error("Failed to establish server session");
+      const details = await response.json().catch(() => null) as
+        | { code?: string; error?: string }
+        | null;
+      const suffix = details?.code ? ` (${details.code})` : "";
+      throw new Error(`Failed to establish server session${suffix}`);
     }
   }, [user, primaryWallet, getAccessToken]);
 
