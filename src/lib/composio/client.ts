@@ -134,17 +134,23 @@ function dedupeTools(tools: OpenAITool[]): OpenAITool[] {
   return deduped;
 }
 
+type ComposioToolQuery =
+  | { kind: "tools"; tools: string[] }
+  | { kind: "toolkits"; toolkits: string[] };
+
 async function fetchToolsByQuery(
   userId: string,
-  query: { tools?: string[]; toolkits?: string[] }
+  query: ComposioToolQuery
 ): Promise<OpenAITool[]> {
   if (!composio) return [];
 
   try {
-    const tools = await composio.tools.get(userId, {
-      ...query,
-      limit: MAX_TOOL_DEFINITIONS,
-    });
+    const tools = query.kind === "tools"
+      ? await composio.tools.get(userId, { tools: query.tools })
+      : await composio.tools.get(userId, {
+          toolkits: query.toolkits,
+          limit: MAX_TOOL_DEFINITIONS,
+        });
     return toOpenAITools(tools);
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
@@ -186,13 +192,19 @@ export async function getAgentToolsFromConfig(
 
   if (parsed.explicitTools.length > 0) {
     collectedTools.push(
-      ...(await fetchToolsByQuery(resolvedUserId, { tools: parsed.explicitTools }))
+      ...(await fetchToolsByQuery(resolvedUserId, {
+        kind: "tools",
+        tools: parsed.explicitTools,
+      }))
     );
   }
 
   if (parsed.toolkitHints.length > 0) {
     collectedTools.push(
-      ...(await fetchToolsByQuery(resolvedUserId, { toolkits: parsed.toolkitHints }))
+      ...(await fetchToolsByQuery(resolvedUserId, {
+        kind: "toolkits",
+        toolkits: parsed.toolkitHints,
+      }))
     );
   }
 

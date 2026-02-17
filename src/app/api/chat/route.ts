@@ -46,14 +46,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function extractTextContent(
-  content: OpenAI.Chat.Completions.ChatCompletionMessage["content"] | null | undefined
-): string {
+function extractTextContent(content: unknown): string {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return "";
 
   return content
-    .map((part) => ("text" in part && typeof part.text === "string" ? part.text : ""))
+    .map((part) => {
+      if (typeof part === "string") return part;
+      return isRecord(part) && typeof part.text === "string" ? part.text : "";
+    })
     .join("\n")
     .trim();
 }
