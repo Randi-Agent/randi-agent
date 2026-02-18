@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { provisionContainer } from "@/lib/docker/provisioner";
 import { cleanupExpiredContainers } from "@/lib/docker/cleanup";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
+import { ensureUserHasUsername } from "@/lib/utils/username";
 
 const provisionSchema = z.object({
   agentId: z.string().min(1),
@@ -97,7 +98,8 @@ export async function POST(request: NextRequest) {
       const creditsNeeded = hours * agent.creditsPerHour;
 
       if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
-      if (!user.username) throw new Error("USERNAME_REQUIRED");
+      const resolvedUsername =
+        user.username ?? (await ensureUserHasUsername(tx, user.id, user.walletAddress));
 
       creditsReserved = creditsNeeded;
 
@@ -129,7 +131,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return { containerId: container.id, agentSlug: agent.slug, username: user.username, agentName: agent.name };
+      return {
+        containerId: container.id,
+        agentSlug: agent.slug,
+        username: resolvedUsername,
+        agentName: agent.name,
+      };
     });
 
     createdContainerId = provisionData.containerId;
@@ -204,7 +211,12 @@ export async function POST(request: NextRequest) {
       const message = error.message;
       if (message === "AGENT_NOT_FOUND") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       if (message === "INSUFFICIENT_CREDITS") return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
-      if (message === "USERNAME_REQUIRED") return NextResponse.json({ error: "Please set a username first" }, { status: 400 });
+      if (message === "USERNAME_GENERATION_FAILED") {
+        return NextResponse.json(
+          { error: "Unable to prepare account profile" },
+          { status: 500 }
+        );
+      }
       if (message === "DOCKER_PROVISION_FAILED") return NextResponse.json({ error: "Failed to provision agent container" }, { status: 500 });
     }
 

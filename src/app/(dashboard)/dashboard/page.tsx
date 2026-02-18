@@ -97,16 +97,16 @@ export default function DashboardPage() {
       </div>
 
       <div className="glass-card rounded-2xl p-6 mb-8">
-        <h2 className="text-lg font-bold mb-4">Account Setup</h2>
+        <h2 className="text-lg font-bold mb-4">Profile URL (Optional)</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Set a username to create agent containers. This will be used for your unique subdomain.
+          You can set a custom username for branded agent URLs. If left blank, one is generated automatically.
         </p>
         <div className="flex gap-3">
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-            placeholder="Enter username (e.g., myname123)"
+            placeholder="Enter custom username (e.g., myname123)"
             className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             minLength={3}
             maxLength={20}

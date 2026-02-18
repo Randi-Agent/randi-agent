@@ -7,6 +7,7 @@ import { signToken } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/db/prisma";
 import { isValidSolanaAddress } from "@/lib/solana/validation";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
+import { ensureUserHasUsername } from "@/lib/utils/username";
 
 const schema = z.object({
   wallet: z.string().refine(isValidSolanaAddress, "Invalid wallet address"),
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
     update: {},
     create: { walletAddress: wallet },
   });
+  const username = await ensureUserHasUsername(prisma, user.id, wallet);
 
   // Issue JWT
   const token = await signToken(user.id, wallet);
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
     user: {
       id: user.id,
       walletAddress: user.walletAddress,
-      username: user.username,
+      username,
       creditBalance: user.creditBalance,
     },
   });

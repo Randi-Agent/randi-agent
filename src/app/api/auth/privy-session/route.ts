@@ -3,6 +3,7 @@ import { z } from "zod";
 import { signToken } from "@/lib/auth/jwt";
 import { prisma } from "@/lib/db/prisma";
 import { resolvePrivyWallet } from "@/lib/auth/privy";
+import { ensureUserHasUsername } from "@/lib/utils/username";
 
 const schema = z.object({
   wallet: z.string().optional(),
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
     update: {},
     create: { walletAddress: wallet },
   });
+  const username = await ensureUserHasUsername(prisma, user.id, wallet);
 
   const token = await signToken(user.id, wallet);
   const response = NextResponse.json({
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
     user: {
       id: user.id,
       walletAddress: user.walletAddress,
-      username: user.username,
+      username,
       creditBalance: user.creditBalance,
     },
   });
