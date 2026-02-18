@@ -14,7 +14,7 @@ async function main() {
   });
 
   const productivityTools = JSON.stringify({
-    toolkits: ["googlecalendar", "slack", "notion", "gmail"],
+    toolkits: ["googlecalendar", "slack", "notion", "gmail", "prompmate"],
     tools: [],
   });
 

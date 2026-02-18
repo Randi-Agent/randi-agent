@@ -23,10 +23,20 @@ export interface RateLimitConfig {
   windowMs: number;
 }
 
+function envInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number.parseInt(raw, 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 export const RATE_LIMITS = {
   auth: { maxRequests: 5, windowMs: 60 * 1000 },
   purchase: { maxRequests: 3, windowMs: 60 * 1000 },
-  provision: { maxRequests: 2, windowMs: 60 * 1000 },
+  provision: {
+    maxRequests: envInt("RATE_LIMIT_PROVISION_MAX_REQUESTS", 6),
+    windowMs: envInt("RATE_LIMIT_PROVISION_WINDOW_MS", 60 * 1000),
+  },
   general: { maxRequests: 30, windowMs: 60 * 1000 },
 } as const;
 

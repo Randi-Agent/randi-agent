@@ -21,6 +21,9 @@ const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
   slack_api: "slack",
   notion_api: "notion",
   google_calendar: "googlecalendar",
+  prompmate_api: "prompmate",
+  promptmate_api: "prompmate",
+  promptmate: "prompmate",
 };
 
 interface ParsedAgentToolConfig {

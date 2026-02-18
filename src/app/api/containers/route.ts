@@ -57,12 +57,22 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth();
     userId = auth.userId;
 
-    const { allowed } = await checkRateLimit(
+    const rateLimit = await checkRateLimit(
       `provision:${auth.userId}`,
       RATE_LIMITS.provision
     );
-    if (!allowed) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    if (!rateLimit.allowed) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((rateLimit.resetAt - Date.now()) / 1000)
+      );
+      return NextResponse.json(
+        {
+          error: "Too many provisioning requests. Please wait and try again.",
+          retryAfterSec,
+        },
+        { status: 429, headers: { "Retry-After": String(retryAfterSec) } }
+      );
     }
 
     const body = await request.json();
