@@ -7,14 +7,21 @@ import { RandiLogo } from "@/components/branding/RandiLogo";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
-  const { signIn, loading, isAuthenticated } = useAuth();
+  const {
+    signIn,
+    loading,
+    isAuthenticated,
+    sessionReady,
+    sessionError,
+    retrySessionSync,
+  } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && sessionReady) {
       router.push("/dashboard");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, sessionReady, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/50">
@@ -33,11 +40,26 @@ export default function LoginPage() {
         <div className="bg-card border border-border rounded-xl p-8 flex flex-col items-center gap-4">
           <button
             onClick={() => signIn()}
-            disabled={loading || isAuthenticated}
+            disabled={loading || (isAuthenticated && !sessionReady)}
             className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-lg transition-colors"
           >
-            {isAuthenticated ? "Finalizing sign in..." : loading ? "Loading..." : "Sign In"}
+            {loading
+              ? "Loading..."
+              : isAuthenticated && !sessionReady
+                ? "Finalizing sign in..."
+                : "Sign In"}
           </button>
+          {sessionError && isAuthenticated && !sessionReady ? (
+            <div className="w-full rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
+              <p>{sessionError}</p>
+              <button
+                onClick={retrySessionSync}
+                className="mt-2 inline-flex rounded-md bg-red-500/20 px-2 py-1 text-red-100 hover:bg-red-500/30"
+              >
+                Retry Finalizing
+              </button>
+            </div>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             Sign in with Solana wallet or Email
           </p>

@@ -9,6 +9,15 @@ const schema = z.object({
   wallet: z.string().optional(),
 });
 
+function isPrivyRateLimitError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("status 429") || message.includes("too_many_requests");
+}
+
 function getBearerToken(request: NextRequest): string | null {
   const authHeader = request.headers.get("authorization");
   if (!authHeader) return null;
@@ -63,6 +72,21 @@ export async function POST(request: NextRequest) {
         fallbackReason,
         requestedWallet: parsed.data.wallet ?? null,
       });
+
+      if (isPrivyRateLimitError(error) || isPrivyRateLimitError(fallbackError)) {
+        return NextResponse.json(
+          {
+            error: "Authentication provider is rate limiting requests. Please retry shortly.",
+            code: "privy_rate_limited",
+          },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": "15",
+            },
+          }
+        );
+      }
 
       return NextResponse.json(
         {
