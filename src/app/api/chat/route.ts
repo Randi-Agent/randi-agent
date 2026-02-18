@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type OpenAI from "openai";
-import { openrouter, isFreeModel, DEFAULT_MODEL } from "@/lib/openrouter/client";
+import { openrouter, isUnmeteredModel, DEFAULT_MODEL } from "@/lib/openrouter/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 import {
@@ -217,8 +217,8 @@ export async function POST(req: NextRequest) {
 
     const { agentId, sessionId, message, model } = parsed.data;
 
-    // Paid-model handling is intentionally deferred; this preserves current behavior.
-    if (!isFreeModel(model)) {
+    // Additional billing checks for metered models can be added here.
+    if (!isUnmeteredModel(model)) {
       // Placeholder for credits/x402 checks.
     }
 

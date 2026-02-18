@@ -15,11 +15,9 @@ export const openrouter = new OpenAI({
     }
 });
 
-export const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+export const DEFAULT_MODEL =
+    process.env.OPENROUTER_DEFAULT_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
 
-/**
- * Helper to check if a model is in the free tier
- */
-export function isFreeModel(modelId: string): boolean {
+export function isUnmeteredModel(modelId: string): boolean {
     return modelId.endsWith(":free") || modelId.includes("/free");
 }
