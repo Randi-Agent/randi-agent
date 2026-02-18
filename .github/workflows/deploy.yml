@@ -53,6 +53,8 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
             NEXT_PUBLIC_PRIVY_APP_ID=${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
+            NEXT_PUBLIC_X_URL=https://x.com/RandiAgent
+            NEXT_PUBLIC_COMPOSIO_TOOLS_URL=https://composio.dev/tools
             NEXT_PUBLIC_TOKEN_MINT=CoEuCG7oy4RJ71cAryMVqSPAgbUH6U4niTDeGwzfGDfv
 
       - name: Deploy to EC2
