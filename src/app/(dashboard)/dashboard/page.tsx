@@ -78,10 +78,10 @@ export default function DashboardPage() {
         <div className="glass-card rounded-2xl p-6">
           <p className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">Model Access</p>
           <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-3xl font-bold">FREE TIER</span>
+            <span className="text-3xl font-bold">INCLUDED MODELS</span>
           </div>
           <p className="text-xs text-muted-foreground mt-4">
-            You can use Llama 3, Gemini Flash, and DeepSeek for 0 credits.
+            Llama 3, Gemini Flash, and DeepSeek are available now.
           </p>
         </div>
 
