@@ -9,10 +9,13 @@ import {
   SystemProgram,
 } from "@solana/web3.js";
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
   createBurnCheckedInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
 
 declare global {
@@ -101,8 +104,59 @@ export function useSPLTransfer() {
           }
 
           const mint = new PublicKey(params.mint);
-          const fromATA = await getAssociatedTokenAddress(mint, fromWallet);
-          const toATA = await getAssociatedTokenAddress(mint, toWallet);
+          const mintAccountInfo = await connection.getAccountInfo(mint, "confirmed");
+          if (!mintAccountInfo) {
+            throw new Error("Token mint not found on selected Solana network");
+          }
+
+          const tokenProgramId = mintAccountInfo.owner.equals(TOKEN_PROGRAM_ID)
+            ? TOKEN_PROGRAM_ID
+            : mintAccountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)
+              ? TOKEN_2022_PROGRAM_ID
+              : null;
+
+          if (!tokenProgramId) {
+            throw new Error("Unsupported token program for selected mint");
+          }
+
+          const fromATA = await getAssociatedTokenAddress(
+            mint,
+            fromWallet,
+            false,
+            tokenProgramId,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          const toATA = await getAssociatedTokenAddress(
+            mint,
+            toWallet,
+            false,
+            tokenProgramId,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+
+          const [fromAccountInfo, toAccountInfo] = await Promise.all([
+            connection.getAccountInfo(fromATA, "confirmed"),
+            connection.getAccountInfo(toATA, "confirmed"),
+          ]);
+
+          if (!fromAccountInfo) {
+            throw new Error(
+              "Source token account not found for this mint. Ensure your wallet holds this token on the selected network."
+            );
+          }
+
+          if (!toAccountInfo) {
+            tx.add(
+              createAssociatedTokenAccountIdempotentInstruction(
+                fromWallet,
+                toATA,
+                toWallet,
+                mint,
+                tokenProgramId,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+              )
+            );
+          }
 
           // Build transfer instruction
           const transferIx = createTransferCheckedInstruction(
@@ -113,7 +167,7 @@ export function useSPLTransfer() {
             BigInt(params.amount),
             params.decimals,
             [],
-            TOKEN_PROGRAM_ID
+            tokenProgramId
           );
           tx.add(transferIx);
 
@@ -129,7 +183,7 @@ export function useSPLTransfer() {
                 burnAmount,
                 params.decimals,
                 [],
-                TOKEN_PROGRAM_ID
+                tokenProgramId
               )
             );
           }

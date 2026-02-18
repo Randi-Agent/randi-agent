@@ -44,8 +44,15 @@ export async function verifyTransaction(
     let burnedAmount = BigInt(0);
     const treasuryKey = new PublicKey(expectedRecipient);
     const mintKey = new PublicKey(expectedMint);
-    const { getAssociatedTokenAddress } = await import("@solana/spl-token");
-    const expectedATA = await getAssociatedTokenAddress(mintKey, treasuryKey);
+    const {
+      getAssociatedTokenAddress,
+      TOKEN_PROGRAM_ID,
+      TOKEN_2022_PROGRAM_ID,
+    } = await import("@solana/spl-token");
+    const [expectedATA, expectedATA2022] = await Promise.all([
+      getAssociatedTokenAddress(mintKey, treasuryKey, false, TOKEN_PROGRAM_ID),
+      getAssociatedTokenAddress(mintKey, treasuryKey, false, TOKEN_2022_PROGRAM_ID),
+    ]);
 
     for (const ix of instructions) {
       if (!("parsed" in ix) || !ix.parsed?.type) continue;
@@ -57,7 +64,12 @@ export async function verifyTransaction(
         const tokenAmount = BigInt(info.tokenAmount.amount);
 
         if (mintAddress !== expectedMint) continue;
-        if (destination !== expectedATA.toBase58()) continue;
+        if (
+          destination !== expectedATA.toBase58() &&
+          destination !== expectedATA2022.toBase58()
+        ) {
+          continue;
+        }
 
         transferredToTreasury += tokenAmount;
       }
