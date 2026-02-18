@@ -45,9 +45,7 @@ async function resolveRpcUrl(): Promise<string> {
     // Fall back to build-time env var when runtime config endpoint is unavailable.
   }
 
-  cachedRpcUrl =
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
-  return cachedRpcUrl;
+  return process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
 }
 
 declare global {
