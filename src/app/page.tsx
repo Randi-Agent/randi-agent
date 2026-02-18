@@ -7,6 +7,9 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function LandingPage() {
   const { user } = useAuth();
+  const xUrl = process.env.NEXT_PUBLIC_X_URL || "https://x.com";
+  const composioToolsUrl =
+    process.env.NEXT_PUBLIC_COMPOSIO_TOOLS_URL || "https://composio.dev/tools";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/50">
@@ -15,6 +18,18 @@ export default function LandingPage() {
         <div className="mb-6 flex justify-center animate-in fade-in zoom-in duration-500">
           <RandiLogo size="xl" variant="icon-only" className="drop-shadow-2xl" />
         </div>
+        <p className="text-sm text-muted-foreground mb-6">
+          Powered by{" "}
+          <a
+            href={composioToolsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline font-medium"
+          >
+            Composio
+          </a>{" "}
+          tools
+        </p>
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
           Intelligent AI Agents
           <br />
@@ -25,7 +40,7 @@ export default function LandingPage() {
           Sign in once, chat everywhere. Free tier available for everyone.
         </p>
 
-        <div className="flex gap-4 justify-center mb-16">
+        <div className="flex flex-wrap gap-4 justify-center mb-16">
           {user ? (
             <Link
               href="/dashboard"
@@ -41,6 +56,14 @@ export default function LandingPage() {
               Get Started for Free
             </Link>
           )}
+          <a
+            href={xUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="px-8 py-3 border border-border hover:border-primary/40 bg-card hover:bg-card/80 text-foreground rounded-lg font-semibold text-lg transition-all"
+          >
+            Follow on X
+          </a>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 text-left">
