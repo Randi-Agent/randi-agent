@@ -96,6 +96,15 @@ export function useAuth() {
     }
   }, [user, primaryWallet, getAccessToken]);
 
+  const hasServerSession = useCallback(async () => {
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+    });
+    return response.ok;
+  }, []);
+
   useEffect(() => {
     if (!ready || !authenticated || sharedSessionSynced) {
       return;
@@ -121,7 +130,12 @@ export function useAuth() {
     }
 
     if (!sharedSyncPromise) {
-      sharedSyncPromise = syncSession()
+      sharedSyncPromise = (async () => {
+        const existingSession = await hasServerSession();
+        if (!existingSession) {
+          await syncSession();
+        }
+      })()
         .then(() => {
           sharedSessionSynced = true;
           sharedNextRetryAt = 0;
@@ -159,7 +173,7 @@ export function useAuth() {
         retryTimerRef.current = null;
       }
     };
-  }, [ready, authenticated, syncSession, syncRetryTick]);
+  }, [ready, authenticated, syncSession, hasServerSession, syncRetryTick]);
 
   useEffect(() => {
     if (!authenticated) {
