@@ -142,31 +142,40 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const user = await prisma.user.upsert({
-    where: { walletAddress: wallet },
-    update: {},
-    create: { walletAddress: wallet },
-  });
-  const username = await ensureUserHasUsername(prisma, user.id, wallet);
+  try {
+    const user = await prisma.user.upsert({
+      where: { walletAddress: wallet },
+      update: {},
+      create: { walletAddress: wallet },
+    });
 
-  const token = await signToken(user.id, wallet);
-  const response = NextResponse.json({
-    ok: true,
-    user: {
-      id: user.id,
-      walletAddress: user.walletAddress,
-      username,
-      creditBalance: user.creditBalance,
-    },
-  });
+    const username = await ensureUserHasUsername(prisma, user.id, wallet);
+    const token = await signToken(user.id, wallet);
 
-  response.cookies.set("auth-token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 24 * 60 * 60,
-    path: "/",
-  });
+    const response = NextResponse.json({
+      ok: true,
+      user: {
+        id: user.id,
+        walletAddress: user.walletAddress,
+        username,
+        creditBalance: user.creditBalance,
+      },
+    });
 
-  return response;
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60,
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Critical error building server session:", error);
+    return NextResponse.json(
+      { error: "Internal server error during session establishment", code: "session_creation_failed" },
+      { status: 500 }
+    );
+  }
 }
