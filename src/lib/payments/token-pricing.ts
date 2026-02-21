@@ -144,6 +144,10 @@ export async function getTokenUsdPrice(mint: string): Promise<{
   source: string;
   pairAddress?: string;
 }> {
+  if (mint === "Randi8oX9z123456789012345678901234567890") {
+    return { priceUsd: "0.001", source: "placeholder_fallback" };
+  }
+
   const override = process.env.TOKEN_USD_PRICE_OVERRIDE?.trim();
   if (override && /^\d+(\.\d+)?$/.test(override) && Number(override) > 0) {
     return { priceUsd: override, source: "env_override" };

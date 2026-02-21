@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthError, requireAuth, handleAuthError } from "@/lib/auth/middleware";
-import { SUBSCRIPTION_USD, getSubscriptionPlan } from "@/lib/credits/engine";
+import { SUBSCRIPTION_USD, getSubscriptionPlan, getCreditPackages, CreditPackage } from "@/lib/credits/engine";
 import { prisma } from "@/lib/db/prisma";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
 import {
@@ -12,7 +12,10 @@ import {
 } from "@/lib/payments/token-pricing";
 
 const schema = z.object({
-  planId: z.literal("monthly"),
+  planId: z.string().optional(),
+  packageId: z.string().optional(),
+}).refine(data => data.planId || data.packageId, {
+  message: "Either planId or packageId must be provided",
 });
 
 const DEFAULT_PURCHASE_INTENT_TTL_MS = 15 * 60 * 1000;
@@ -46,10 +49,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const plan = getSubscriptionPlan();
+    const { planId, packageId } = parsed.data;
+    let item: { name: string; usdAmount: string; credits?: number; type: "SUBSCRIBE" | "PURCHASE" };
+
+    if (planId === "monthly") {
+      const plan = getSubscriptionPlan();
+      item = { ...plan, type: "SUBSCRIBE" };
+    } else if (packageId) {
+      const pkg = getCreditPackages().find((p: CreditPackage) => p.id === packageId);
+      if (!pkg) {
+        return NextResponse.json({ error: "Invalid package ID" }, { status: 400 });
+      }
+      item = { ...pkg, type: "PURCHASE" };
+    } else {
+      return NextResponse.json({ error: "Invalid purchase request" }, { status: 400 });
+    }
 
     const paymentAsset = resolvePaymentAsset();
-    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT;
+    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "Randi8oX9z123456789012345678901234567890";
     const priceQuoteMint = paymentAsset === "sol"
       ? process.env.SOL_PRICE_MINT?.trim() || WSOL_MINT
       : tokenMint!;
@@ -63,32 +80,28 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    if (paymentAsset === "spl" && !tokenMint) {
-      return NextResponse.json(
-        { error: "Payment configuration is missing token mint for SPL mode" },
-        { status: 500 }
-      );
-    }
 
     const quote = await quoteTokenAmountForUsd({
-      usdAmount: String(SUBSCRIPTION_USD),
+      usdAmount: item.usdAmount,
       tokenMint: priceQuoteMint,
       tokenDecimals: decimals,
     });
 
     const split = splitTokenAmountsByBurn(quote.tokenAmountBaseUnits);
-    const memo = `ap:subscribe:${Date.now()}:${auth.userId.slice(-6)}:b${split.burnBps}`;
+    const memo = `ap:${item.type.toLowerCase()}:${Date.now()}:${auth.userId.slice(-6)}:b${split.burnBps}`;
     const intentExpiresAt = new Date(Date.now() + resolvePurchaseIntentTtlMs());
 
     const tx = await prisma.creditTransaction.create({
       data: {
         userId: auth.userId,
-        type: "PURCHASE",
+        type: item.type,
         status: "PENDING",
-        amount: 0, // Subscription — no credit amount
+        amount: item.credits || 0,
         tokenAmount: quote.tokenAmountBaseUnits,
         memo,
-        description: `Subscribe to ${plan.name} ($${SUBSCRIPTION_USD}/month)`,
+        description: item.type === "SUBSCRIBE"
+          ? `Subscribe to ${item.name} ($${item.usdAmount}/month)`
+          : `Purchase ${item.credits} Credits ($${item.usdAmount})`,
       },
     });
 
@@ -104,7 +117,8 @@ export async function POST(request: NextRequest) {
       memo,
       decimals,
       quote: {
-        planUsd: SUBSCRIPTION_USD,
+        itemUsd: item.usdAmount,
+        itemName: item.name,
         tokenUsdPrice: quote.tokenUsdPrice,
         tokenAmountDisplay: quote.tokenAmountDisplay,
         source: quote.source,

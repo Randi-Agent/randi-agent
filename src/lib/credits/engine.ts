@@ -11,6 +11,13 @@ export interface SubscriptionPlan {
   features: string[];
 }
 
+export interface CreditPackage {
+  id: string;
+  name: string;
+  usdAmount: string;
+  credits: number;
+}
+
 export function getSubscriptionPlan(): SubscriptionPlan {
   return {
     id: "monthly",
@@ -24,6 +31,29 @@ export function getSubscriptionPlan(): SubscriptionPlan {
       "1000+ Composio tool integrations",
     ],
   };
+}
+
+export function getCreditPackages(): CreditPackage[] {
+  return [
+    {
+      id: "starter",
+      name: "Starter Pack",
+      usdAmount: "10",
+      credits: 100,
+    },
+    {
+      id: "growth",
+      name: "Growth Pack",
+      usdAmount: "50",
+      credits: 600, // 20% bonus
+    },
+    {
+      id: "pro",
+      name: "Pro Pack",
+      usdAmount: "200",
+      credits: 3000, // 50% bonus
+    },
+  ];
 }
 
 export async function getUserSubscription(userId: string) {

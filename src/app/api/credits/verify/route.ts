@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
         id: transactionId,
         userId: auth.userId,
         memo,
-        type: "PURCHASE",
+        type: { in: ["PURCHASE", "SUBSCRIBE"] },
       },
       select: {
         id: true,
