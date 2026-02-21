@@ -28,7 +28,7 @@ const icons: Record<string, string> = {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isSubscribed } = useCredits();
+  const { isSubscribed, balance } = useCredits();
   const { priceUsd } = useTokenPrice();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -85,6 +85,11 @@ export function Sidebar() {
               </Link>
             </>
           )}
+        </div>
+        {/* Credit Balance */}
+        <div className="px-3 py-2 bg-muted/50 rounded-lg">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">On-Demand Credits</p>
+          <p className="text-sm font-bold text-primary">{balance.toLocaleString()} CR</p>
         </div>
         {/* RANDI Price */}
         {priceUsd !== null && (
