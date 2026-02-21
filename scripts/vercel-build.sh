@@ -53,6 +53,8 @@ else
      DIRECT_URL="$DB_PUSH_URL" \
      npx prisma db push --skip-generate; then
     echo "Schema push succeeded" >&2
+    echo "Seeding database..." >&2
+    DATABASE_URL="$DB_PUSH_URL" npx prisma db seed
   else
     echo "WARNING: prisma db push failed (tables may already exist) — continuing build" >&2
   fi
