@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 interface TokenPrice {
     symbol: string;
     priceUsd: number | null;
+    marketCap: number | null;
     burnPercent: number;
 }
 
@@ -14,6 +15,7 @@ export function useTokenPrice() {
     const [price, setPrice] = useState<TokenPrice>({
         symbol: "RANDI",
         priceUsd: null,
+        marketCap: null,
         burnPercent: 10,
     });
     const [loading, setLoading] = useState(true);
@@ -26,6 +28,7 @@ export function useTokenPrice() {
             setPrice({
                 symbol: data.symbol ?? "RANDI",
                 priceUsd: data.priceUsd ?? null,
+                marketCap: data.marketCap ?? null,
                 burnPercent: data.burnPercent ?? 10,
             });
         } catch {
@@ -58,5 +61,17 @@ export function useTokenPrice() {
         return amount.toFixed(2);
     }, []);
 
-    return { ...price, loading, usdToRandi, formatRandi, refresh: fetchPrice };
+    /** Format USD amount with abbreviations (e.g. $1.2M) */
+    const formatUsdCompact = useCallback((amount: number | null): string => {
+        if (amount === null) return "—";
+        const formatter = new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            notation: "compact",
+            maximumFractionDigits: 2,
+        });
+        return formatter.format(amount);
+    }, []);
+
+    return { ...price, loading, usdToRandi, formatRandi, formatUsdCompact, refresh: fetchPrice };
 }

@@ -112,12 +112,12 @@ export default function TransparencyPage() {
                                 <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" />
                             </svg>
                         </div>
-                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1 group-hover:text-primary transition-colors">RANDI Price 📈 ↗</p>
+                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1 group-hover:text-primary transition-colors">RANDI Price & MC 📈</p>
                         <h3 className="text-2xl font-mono font-bold">
                             {priceLoading ? "..." : `$${priceUsd?.toFixed(8)}`}
                         </h3>
-                        <p className="text-sm text-muted-foreground mt-1 underline decoration-muted-foreground/30 underline-offset-4">
-                            View on Pump.fun
+                        <p className="text-sm text-primary font-bold mt-1">
+                            {priceLoading ? "..." : `MC: ${formatUsdCompact(price.marketCap)}`}
                         </p>
                     </a>
                 </div>

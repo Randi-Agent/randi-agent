@@ -8,27 +8,28 @@ const CACHE_TTL_MS = 30_000;
 export async function GET() {
     try {
         const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "Randi8oX9z123456789012345678901234567890";
-        if (!process.env.TOKEN_MINT && !process.env.NEXT_PUBLIC_TOKEN_MINT) {
-            console.warn("TOKEN_MINT not configured, using placeholder. This will cause downstream quote failures.");
-        }
+        const tokenSupply = Number(process.env.TOKEN_SUPPLY || "1000000000");
 
         const now = Date.now();
         if (cachedPrice && now - cachedPrice.timestamp < CACHE_TTL_MS) {
             return NextResponse.json({
                 symbol: "RANDI",
                 priceUsd: Number(cachedPrice.usd),
+                marketCap: Number(cachedPrice.usd) * tokenSupply,
                 burnPercent: 10,
                 cachedAt: cachedPrice.timestamp,
             });
         }
 
         const result = await getTokenUsdPrice(tokenMint);
+        const priceNum = Number(result.priceUsd);
 
         cachedPrice = { usd: result.priceUsd, timestamp: now };
 
         return NextResponse.json({
             symbol: "RANDI",
-            priceUsd: Number(result.priceUsd),
+            priceUsd: priceNum,
+            marketCap: priceNum * tokenSupply,
             burnPercent: 10,
             cachedAt: now,
         });
@@ -38,6 +39,7 @@ export async function GET() {
             {
                 symbol: "RANDI",
                 priceUsd: null,
+                marketCap: null,
                 burnPercent: 10,
                 error: "Price unavailable",
             },

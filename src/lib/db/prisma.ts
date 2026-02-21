@@ -12,12 +12,12 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const POSTGRES_PROTOCOL = /^postgres(?:ql)?:\/\//i;
+const DB_PROTOCOL = /^(?:postgres(?:ql)?|file):\/\//i;
 
 function normalizedEnv(name: string): string | null {
   const value = process.env[name]?.trim();
   if (!value) return null;
-  return POSTGRES_PROTOCOL.test(value) ? value : null;
+  return DB_PROTOCOL.test(value) ? value : null;
 }
 
 function isSupabasePooler(url: string): boolean {
