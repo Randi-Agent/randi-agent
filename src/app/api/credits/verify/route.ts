@@ -267,6 +267,7 @@ export async function POST(request: NextRequest) {
             data: {
               subscriptionStatus: "active",
               subscriptionExpiresAt: expiresAt,
+              tier: "PRO",
             },
             select: { creditBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
           });

@@ -147,11 +147,12 @@ function buildStorageKey(userId: string, agentSlug: string): string {
 export async function provisionContainer(
   userId: string,
   agentSlug: string,
-  username: string
+  username: string,
+  tier: string = "FREE"
 ): Promise<ProvisionResult> {
   const bridge = getComputeBridge();
   if (bridge) {
-    return bridge.provision(userId, agentSlug, username);
+    return bridge.provision(userId, agentSlug, username, tier);
   }
 
   const agentConfigFactory = getAgentConfig(agentSlug);
@@ -199,6 +200,13 @@ export async function provisionContainer(
     ([key, value]) => `${key}=${value}`
   );
 
+  // Scale resources based on tier
+  const tierValue = tier.toUpperCase();
+  const resourceMultiplier = tierValue === "PRO" ? 2 : 1;
+
+  const memoryLimit = BigInt(config.memoryLimit) * BigInt(resourceMultiplier);
+  const nanoCpus = Number(config.cpuLimit) * resourceMultiplier;
+
   let container;
   try {
     container = await docker.createContainer({
@@ -210,8 +218,8 @@ export async function provisionContainer(
       },
       HostConfig: {
         Binds: binds,
-        Memory: config.memoryLimit,
-        NanoCpus: config.cpuLimit,
+        Memory: Number(memoryLimit),
+        NanoCpus: nanoCpus,
         PidsLimit: config.pidLimit,
         CapDrop: ["ALL"],
         CapAdd: ["NET_BIND_SERVICE"],

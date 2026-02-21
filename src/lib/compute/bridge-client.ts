@@ -15,7 +15,8 @@ export class ComputeBridgeClient {
     async provision(
         userId: string,
         agentSlug: string,
-        username: string
+        username: string,
+        tier: string = "FREE"
     ): Promise<ProvisionResult> {
         const res = await fetch(`${this.config.baseUrl}/provision`, {
             method: "POST",
@@ -23,7 +24,7 @@ export class ComputeBridgeClient {
                 "Content-Type": "application/json",
                 "X-Bridge-API-Key": this.config.apiKey,
             },
-            body: JSON.stringify({ userId, agentSlug, username }),
+            body: JSON.stringify({ userId, agentSlug, username, tier }),
         });
 
         if (!res.ok) {

@@ -3,10 +3,35 @@ import { docker } from "@/lib/docker/client";
 import { getComputeBridge } from "@/lib/compute/bridge-client";
 
 export async function cleanupExpiredContainers() {
+    const now = new Date();
+    const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
+
+    // 1. Identify containers expiring within 15 mins that haven't been warned
+    const expiringSoon = await prisma.container.findMany({
+        where: {
+            status: "RUNNING",
+            expiresAt: {
+                gt: now,
+                lt: fifteenMinutesFromNow,
+            },
+            lastWarningSentAt: null,
+        },
+    });
+
+    for (const container of expiringSoon) {
+        console.log(`[Grace Period] Marking container ${container.id} (${container.subdomain}) as expiring soon.`);
+        await prisma.container.update({
+            where: { id: container.id },
+            data: { lastWarningSentAt: now },
+        });
+        // Here we could trigger a real notification (email, websocket, etc.)
+    }
+
+    // 2. Cleanup containers that have actually expired
     const expired = await prisma.container.findMany({
         where: {
             status: "RUNNING",
-            expiresAt: { lt: new Date() },
+            expiresAt: { lt: now },
         },
     });
 
@@ -34,7 +59,7 @@ export async function cleanupExpiredContainers() {
 
             await prisma.container.update({
                 where: { id: container.id },
-                data: { status: "EXPIRED", stoppedAt: new Date() },
+                data: { status: "EXPIRED", stoppedAt: now },
             });
         } catch (error) {
             console.error(`Failed to cleanup expired container ${container.id}:`, error);

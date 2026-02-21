@@ -185,10 +185,16 @@ export async function POST(request: NextRequest) {
     // 2. Provision Docker container
     let result;
     try {
+      const user = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { tier: true },
+      });
+
       result = await provisionContainer(
         auth.userId,
         provisionData.agentSlug,
-        provisionData.username
+        provisionData.username,
+        user?.tier || "FREE"
       );
     } catch (dockerError) {
       console.error("Docker provisioning failed:", dockerError);

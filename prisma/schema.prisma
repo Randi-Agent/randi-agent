@@ -52,6 +52,7 @@ model Container {
   password    String?
   creditsUsed Int             @default(0)
   expiresAt   DateTime
+  lastWarningSentAt DateTime?
   stoppedAt   DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

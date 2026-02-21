@@ -74,7 +74,7 @@ const auth = (req, res, next) => {
 // --- ROUTES ---
 
 app.post('/provision', auth, async (req, res) => {
-    const { userId, agentSlug, username } = req.body;
+    const { userId, agentSlug, username, tier = 'FREE' } = req.body;
     const configFactory = agentRegistry[agentSlug];
 
     if (!configFactory) {
@@ -90,16 +90,22 @@ app.post('/provision', auth, async (req, res) => {
     const fullSubdomain = `${subdomain}.${domain}`;
     const containerName = `ap-${subdomain}`;
 
+    // Apply tier multipliers
+    const tierValue = tier.toUpperCase();
+    const multiplier = tierValue === 'PRO' ? 2 : 1;
+    const memoryLimit = config.memoryLimit * multiplier;
+    const cpuLimit = config.cpuLimit * multiplier;
+
     try {
         // 1. Pull Image
         console.log(`Pulling image ${config.image}...`);
         const stream = await docker.pull(config.image);
         await new Promise((resolve, reject) => {
-            docker.modem.followProgress(stream, (err, res) => err ? reject(err) : resolve(res));
+            docker.modem.followProgress(stream, (err, resp) => err ? reject(err) : resolve(resp));
         });
 
         // 2. Create Container
-        console.log(`Creating container ${containerName}...`);
+        console.log(`Creating container ${containerName} for user ${userId} [Tier: ${tierValue}]...`);
         const container = await docker.createContainer({
             Image: config.image,
             name: containerName,
@@ -107,8 +113,8 @@ app.post('/provision', auth, async (req, res) => {
             ExposedPorts: { [`${config.internalPort}/tcp`]: {} },
             HostConfig: {
                 Binds: Object.entries(config.volumes).map(([v, p]) => `${v}:${p}`),
-                Memory: config.memoryLimit,
-                NanoCpus: config.cpuLimit,
+                Memory: memoryLimit,
+                NanoCpus: cpuLimit,
                 PidsLimit: config.pidLimit,
                 NetworkMode: DOCKER_NETWORK
             },
@@ -116,10 +122,11 @@ app.post('/provision', auth, async (req, res) => {
                 "traefik.enable": "true",
                 [`traefik.http.routers.${containerName}.rule`]: `Host(\`${fullSubdomain}\`)`,
                 [`traefik.http.routers.${containerName}.entrypoints`]: "websecure",
-                [`traefik.http.routers.${containerName}.tls.certresolver`]: "letlsenv",
+                [`traefik.http.routers.${containerName}.tls.certresolver`]: "letsencrypt",
                 [`traefik.http.services.${containerName}.loadbalancer.server.port`]: String(config.internalPort),
                 "agent-platform.managed": "true",
-                "agent-platform.user-id": userId
+                "agent-platform.user-id": userId,
+                "agent-platform.tier": tierValue
             }
         });
 
