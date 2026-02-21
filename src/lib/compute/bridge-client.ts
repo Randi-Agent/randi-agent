@@ -61,6 +61,50 @@ export class ComputeBridgeClient {
             throw new Error(err.error || "Bridge failed to remove container");
         }
     }
+
+    async start(dockerId: string): Promise<void> {
+        const res = await fetch(`${this.config.baseUrl}/containers/${dockerId}/start`, {
+            method: "POST",
+            headers: {
+                "X-Bridge-API-Key": this.config.apiKey,
+            },
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Bridge failed to start container");
+        }
+    }
+
+    async pause(dockerId: string): Promise<void> {
+        const res = await fetch(`${this.config.baseUrl}/containers/${dockerId}/pause`, {
+            method: "POST",
+            headers: {
+                "X-Bridge-API-Key": this.config.apiKey,
+            },
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Bridge failed to pause container");
+        }
+    }
+
+    async inspect(dockerId: string): Promise<any> {
+        const res = await fetch(`${this.config.baseUrl}/containers/${dockerId}/inspect`, {
+            method: "GET",
+            headers: {
+                "X-Bridge-API-Key": this.config.apiKey,
+            },
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Bridge failed to inspect container");
+        }
+
+        return res.json();
+    }
 }
 
 let bridgeClient: ComputeBridgeClient | null = null;

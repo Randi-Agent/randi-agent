@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { runScanner } from "@/lib/payments/scanner";
-import { runBurnService } from "@/lib/payments/burn-service";
+import { cleanupExpiredContainers } from "@/lib/docker/cleanup";
 
 // This route should be protected by a CRON_SECRET or similar in production
 export async function GET(request: Request) {
@@ -12,17 +11,13 @@ export async function GET(request: Request) {
     }
 
     try {
-        const processed = await runScanner();
-        const burnResult = await runBurnService();
-
+        await cleanupExpiredContainers();
         return NextResponse.json({
             success: true,
-            processedTransactions: processed,
-            burnResult: burnResult,
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error("Scanner cron failed:", error);
-        return NextResponse.json({ error: "Scanner failed" }, { status: 500 });
+        console.error("Cleanup cron failed:", error);
+        return NextResponse.json({ error: "Cleanup failed" }, { status: 500 });
     }
 }

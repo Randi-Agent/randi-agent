@@ -70,6 +70,19 @@ export function useCredits() {
     return res.json();
   };
 
+  const purchasePackage = async (packageId: string) => {
+    const res = await fetch("/api/credits/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ packageId }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error);
+    }
+    return res.json();
+  };
+
   const verifyPurchase = async (
     txSignature: string,
     memo: string,
@@ -123,6 +136,7 @@ export function useCredits() {
     loading,
     error,
     initiateSubscription,
+    purchasePackage,
     verifyPurchase,
     refresh: fetchBalance,
   };

@@ -14,14 +14,14 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 ## 🏗️ Phase 2: The "Body" (Compute Layer)
 **Objective**: Connect the Vercel "Brain" to the AWS "Body" for code execution.
 - [x] **Secure Docker Bridge**: Implement a secure API gateway between Vercel and AWS EC2. (Client & Foundation Implemented)
-- [ ] **Ephemeral Sandboxing**: Automated lifecycle management for user containers (Auto-start/Auto-stop).
-- [ ] **Persistent Storage**: S3/Supabase Storage integration for agent-generated files.
+- [x] **Ephemeral Sandboxing**: Automated lifecycle management for user containers (Auto-start/Auto-stop). (Implemented via Cleanup Cron & EnsureRunning logic)
+- [ ] **Persistent Storage**: S3/Supabase Storage integration for agent-generated files. (Local volume foundation in place)
 - [ ] **Resource Monitoring**: Dashboard tracking for EC2 CPU/RAM usage per user session.
 
 ## 💰 Phase 3: Financial & Tokenomics Layer
 **Objective**: Integrate the $RANDI token deeply into the platform's DNA.
 - [x] **On-Chain Verification**: Robust Solana transaction scanning for credit top-ups.
-- [ ] **Automated Burn Mechanics**: Real-time $RANDI burning on every agent tool execution.
+- [x] **Automated Burn Mechanics**: Real-time $RANDI burning on every agent tool execution. (Batch Burn Protocol Implemented)
 - [ ] **Subscription Tiers**: Managed permissions for "Free" vs "Pro" compute models (e.g., Llama-3-70b vs GPT-4o).
 - [ ] **Referral System**: Token-based incentives for user growth.
 

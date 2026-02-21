@@ -1,5 +1,6 @@
 import { docker } from "./client";
 import { prisma } from "@/lib/db/prisma";
+import { getComputeBridge } from "@/lib/compute/bridge-client";
 
 export async function stopContainer(containerId: string): Promise<void> {
   const container = await prisma.container.findUnique({
@@ -9,9 +10,14 @@ export async function stopContainer(containerId: string): Promise<void> {
   if (!container || !container.dockerId) return;
 
   try {
-    const dockerContainer = docker.getContainer(container.dockerId);
-    await dockerContainer.stop({ t: 10 });
-    await dockerContainer.remove({ force: true });
+    const bridge = getComputeBridge();
+    if (bridge) {
+      await bridge.remove(container.dockerId);
+    } else {
+      const dockerContainer = docker.getContainer(container.dockerId);
+      await dockerContainer.stop({ t: 10 });
+      await dockerContainer.remove({ force: true });
+    }
   } catch (error: unknown) {
     const err = error as { statusCode?: number };
     if (err.statusCode !== 304 && err.statusCode !== 404) {
@@ -106,6 +112,14 @@ export async function getContainerLogs(
   dockerId: string,
   tail: number = 100
 ): Promise<string> {
+  const bridge = getComputeBridge();
+  if (bridge) {
+    // Note: The bridge API for logs isn't fully implemented yet, but we'll adapt it.
+    // Ideally we'd add an /inspect or /logs route. For now, we'll placeholder it as inspect data
+    // or a dedicated logs route if we decide to add one.
+    return "Log retrieval via bridge not yet fully implemented.";
+  }
+
   const container = docker.getContainer(dockerId);
   const logs = await container.logs({
     stdout: true,
@@ -114,4 +128,50 @@ export async function getContainerLogs(
     timestamps: true,
   });
   return logs.toString();
+}
+
+/**
+ * Ensures a container is up and running.
+ * If it's paused, it resumes it. If it's stopped, it starts it.
+ */
+export async function ensureContainerRunning(containerId: string): Promise<void> {
+  const container = await prisma.container.findUnique({
+    where: { id: containerId },
+  });
+  if (!container || !container.dockerId) return;
+
+  const bridge = getComputeBridge();
+
+  try {
+    if (bridge) {
+      const inspect = await bridge.inspect(container.dockerId);
+      const state = inspect.State;
+      if (state.Paused) {
+        // Unfortunately dockerode doesn't have a direct "unpause" matching the bridge call easily
+        // but we'll assume the bridge has a resume/start logic.
+        await bridge.start(container.dockerId);
+      } else if (!state.Running) {
+        await bridge.start(container.dockerId);
+      }
+    } else {
+      const dockerContainer = docker.getContainer(container.dockerId);
+      const inspect = await dockerContainer.inspect();
+      const state = inspect.State;
+      if (state.Paused) {
+        await dockerContainer.unpause();
+      } else if (!state.Running) {
+        await dockerContainer.start();
+      }
+    }
+
+    if (container.status !== "RUNNING") {
+      await prisma.container.update({
+        where: { id: containerId },
+        data: { status: "RUNNING" },
+      });
+    }
+  } catch (error) {
+    console.error(`Failed to ensure container ${containerId} is running:`, error);
+    throw error;
+  }
 }

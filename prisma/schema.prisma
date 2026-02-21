@@ -107,6 +107,7 @@ model CreditTransaction {
   memo          String?
   containerId   String?
   description   String?
+  burnTxSignature String?           // Signature of the protocol's burn transaction
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 

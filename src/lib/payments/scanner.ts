@@ -80,10 +80,16 @@ export class TransactionScanner {
         if (!intent) return false;
 
         // Verify the amount and recipient in the transaction
-        // (This part re-uses logic from verifyTransaction but for a pre-known intent)
+        // Extract the actual token amount transferred to the treasury
+        const preBalance = tx.meta?.preTokenBalances?.find(b => b.owner === this.treasuryWallet);
+        const postBalance = tx.meta?.postTokenBalances?.find(b => b.owner === this.treasuryWallet);
 
-        // For now, if we match the memo exactly and it's pending, we can confirm it 
-        // assuming the connection.getSignaturesForAddress(treasury) already filtered for the recipient.
+        let actualTokenAmount: bigint | null = null;
+        if (preBalance && postBalance) {
+            const preAmount = BigInt(preBalance.uiTokenAmount.amount);
+            const postAmount = BigInt(postBalance.uiTokenAmount.amount);
+            actualTokenAmount = postAmount - preAmount;
+        }
 
         await prisma.$transaction(async (tx) => {
             await tx.creditTransaction.update({
@@ -91,6 +97,7 @@ export class TransactionScanner {
                 data: {
                     status: "CONFIRMED",
                     txSignature: signature,
+                    tokenAmount: actualTokenAmount,
                 },
             });
 
