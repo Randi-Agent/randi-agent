@@ -142,10 +142,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  console.log("Database Connection Diagnostic:", {
+  console.log("Session Establishment Diagnostic:", {
     hasProjectId: process.env.DATABASE_URL?.includes("uoltahlxvmuyznfthgxv"),
-    env: process.env.NODE_ENV,
-    urlLength: process.env.DATABASE_URL?.length || 0,
+    env: process.env.VERCEL_ENV || "unknown",
+    urlSource: "check_server_logs",
   });
 
   try {
