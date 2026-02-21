@@ -101,18 +101,25 @@ export default function TransparencyPage() {
 
                 {/* Current Price */}
                 <div className="bg-card border border-border rounded-xl p-6 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
-                        <svg className="w-12 h-12 text-muted-foreground" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" />
-                        </svg>
-                    </div>
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">RANDI Price 📈</p>
-                    <h3 className="text-2xl font-mono font-bold">
-                        {priceLoading ? "..." : `$${priceUsd?.toFixed(8)}`}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Powered by DexScreener
-                    </p>
+                    <a
+                        href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                    >
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
+                            <svg className="w-12 h-12 text-muted-foreground" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" />
+                            </svg>
+                        </div>
+                        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1 group-hover:text-primary transition-colors">RANDI Price 📈 ↗</p>
+                        <h3 className="text-2xl font-mono font-bold">
+                            {priceLoading ? "..." : `$${priceUsd?.toFixed(8)}`}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1 underline decoration-muted-foreground/30 underline-offset-4">
+                            View on Pump.fun
+                        </p>
+                    </a>
                 </div>
             </div>
 

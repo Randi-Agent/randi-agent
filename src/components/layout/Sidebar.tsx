@@ -94,8 +94,15 @@ export function Sidebar() {
         {/* RANDI Price */}
         {priceUsd !== null && (
           <div className="px-3 py-2 bg-muted/50 rounded-lg">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">RANDI Price</p>
-            <p className="text-sm font-mono font-bold">${priceUsd.toFixed(8)}</p>
+            <a
+              href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:opacity-80 transition-opacity"
+            >
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 hover:text-primary transition-colors">RANDI Price ↗</p>
+              <p className="text-sm font-mono font-bold">${priceUsd.toFixed(8)}</p>
+            </a>
           </div>
         )}
       </div>

@@ -27,9 +27,14 @@ export default function CreditsPage() {
         <p className="text-muted-foreground mt-1">
           Subscribe to Randi Pro for unlimited access
           {priceUsd && (
-            <span className="ml-1 text-xs">
+            <a
+              href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-1 text-xs hover:text-primary transition-colors hover:underline underline-offset-4"
+            >
               • RANDI: ${priceUsd.toFixed(8)}
-            </span>
+            </a>
           )}
         </p>
       </div>
@@ -82,10 +87,10 @@ export default function CreditsPage() {
                 </div>
                 <div className="text-right">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${tx.status === "CONFIRMED"
-                      ? "bg-success/10 text-success"
-                      : tx.status === "PENDING"
-                        ? "bg-warning/10 text-warning"
-                        : "bg-red-500/10 text-red-400"
+                    ? "bg-success/10 text-success"
+                    : tx.status === "PENDING"
+                      ? "bg-warning/10 text-warning"
+                      : "bg-red-500/10 text-red-400"
                     }`}>
                     {tx.status}
                   </span>
