@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
       if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
       const resolvedUsername =
-        user.username ?? (await ensureUserHasUsername(tx, user.id, user.walletAddress));
+        user.username ?? (await ensureUserHasUsername(tx, user.id, user.walletAddress ?? ""));
 
       creditsReserved = creditsNeeded;
 

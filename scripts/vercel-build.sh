@@ -51,8 +51,10 @@ else
   if PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1 \
      DATABASE_URL="$DB_PUSH_URL" \
      DIRECT_URL="$DB_PUSH_URL" \
-     npx prisma db push --skip-generate; then
+     npx prisma db push --skip-generate --accept-data-loss; then
     echo "Schema push succeeded" >&2
+    echo "Regenerating Prisma Client from latest schema..." >&2
+    DATABASE_URL="$DB_PUSH_URL" npx prisma generate
     echo "Seeding database..." >&2
     DATABASE_URL="$DB_PUSH_URL" npx prisma db seed
   else
