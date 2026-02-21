@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+npx tsx scripts/swap-db.ts postgresql
 npx prisma generate
 
 # Strip accidental "VAR_NAME=" prefixes that can creep in from
