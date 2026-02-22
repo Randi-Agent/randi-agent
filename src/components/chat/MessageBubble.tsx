@@ -7,10 +7,12 @@ import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import { Message } from "./ChatWindow";
+import { ApprovalCard, type ApprovalDecision } from "./ApprovalCard";
 
 interface MessageBubbleProps {
     message: Message;
     isStreaming?: boolean;
+    onApprovalDecision?: (approvalId: string, decision: ApprovalDecision) => void;
 }
 
 /**
@@ -196,7 +198,23 @@ function useMarkdownComponents(isStreaming: boolean): Components {
     );
 }
 
-export function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
+export function MessageBubble({
+    message,
+    isStreaming = false,
+    onApprovalDecision,
+}: MessageBubbleProps) {
+    if (message.type === "approval_request" && message.approvalRequest) {
+        return (
+            <div className="flex justify-start w-full">
+                <ApprovalCard
+                    request={message.approvalRequest}
+                    decided={message.approvalDecision}
+                    onDecision={(id, decision) => onApprovalDecision?.(id, decision)}
+                />
+            </div>
+        );
+    }
+
     const isUser = message.role === "user";
     const [copied, setCopied] = useState(false);
     const markdownComponents = useMarkdownComponents(isStreaming);
@@ -221,9 +239,9 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
         <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
             <div
                 className={`max-w-[85%] lg:max-w-[72%] px-4 py-3 rounded-2xl ${isUser
-                        ? `bg-primary text-white rounded-br-none text-sm whitespace-pre-wrap leading-relaxed ${message.error ? "ring-2 ring-red-500/50" : ""
-                        }`
-                        : "bg-muted text-foreground rounded-bl-none border border-border"
+                    ? `bg-primary text-white rounded-br-none text-sm whitespace-pre-wrap leading-relaxed ${message.error ? "ring-2 ring-red-500/50" : ""
+                    }`
+                    : "bg-muted text-foreground rounded-bl-none border border-border"
                     }`}
             >
                 {isUser ? (

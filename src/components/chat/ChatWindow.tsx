@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
+import type { ApprovalRequest, ApprovalDecision } from "./ApprovalCard";
 
 export interface Message {
     id: string;
@@ -10,6 +11,9 @@ export interface Message {
     content: string;
     createdAt: Date | string;
     error?: boolean;
+    type?: "text" | "approval_request";
+    approvalRequest?: ApprovalRequest;
+    approvalDecision?: ApprovalDecision;
 }
 
 interface ChatWindowProps {
@@ -43,10 +47,10 @@ export function ChatWindow({
         setCurrentSessionId(sessionId);
     }, [sessionId]);
 
-    const sendMessage = useCallback(async (content: string) => {
+    const sendMessage = useCallback(async (content: string, resumeApprovalId?: string) => {
         if (!content.trim()) return;
         setError(null);
-        lastFailedMessage.current = null;
+        if (!resumeApprovalId) lastFailedMessage.current = null;
 
         const userMessage: Message = {
             id: `user-${Date.now()}`,
@@ -63,6 +67,7 @@ export function ChatWindow({
                 message: string;
                 agentId?: string;
                 sessionId?: string;
+                resumeApprovalId?: string;
             } = {
                 message: content,
             };
@@ -71,6 +76,9 @@ export function ChatWindow({
             }
             if (agentId && agentId.trim().length > 0) {
                 payload.agentId = agentId;
+            }
+            if (resumeApprovalId) {
+                payload.resumeApprovalId = resumeApprovalId;
             }
 
             const response = await fetch("/api/chat", {
@@ -109,6 +117,39 @@ export function ChatWindow({
                 if (done) break;
 
                 const chunk = decoder.decode(value, { stream: true });
+
+                // Handle Human-in-the-Loop (HITL) markers
+                if (chunk.includes("__APPROVAL_REQUEST__")) {
+                    const markerStart = chunk.indexOf("__APPROVAL_REQUEST__");
+                    const markerEnd = chunk.indexOf("__END__", markerStart);
+
+                    if (markerEnd !== -1) {
+                        const jsonStr = chunk.substring(markerStart + "__APPROVAL_REQUEST__".length, markerEnd);
+                        try {
+                            const approvalData = JSON.parse(jsonStr);
+                            setMessages((prev) => {
+                                // If the assistant hasn't sent any real text yet, replace the placeholder
+                                // Otherwise, we'd need to append. For now, our API pauses and replaces.
+                                const filtered = prev.filter(m => m.id !== assistantId);
+                                return [...filtered, {
+                                    id: `approval-${approvalData.approvalId}`,
+                                    role: "assistant",
+                                    content: "",
+                                    type: "approval_request",
+                                    approvalRequest: approvalData,
+                                    approvalDecision: "PENDING",
+                                    createdAt: new Date(),
+                                }];
+                            });
+                            setIsTyping(false);
+                            setStreamingMessageId(null);
+                            return; // Stop reading this stream
+                        } catch (e) {
+                            console.error("Failed to parse HITL event", e);
+                        }
+                    }
+                }
+
                 accumulatedContent += chunk;
 
                 setMessages((prev) =>
@@ -137,7 +178,27 @@ export function ChatWindow({
             setIsTyping(false);
             setStreamingMessageId(null);
         }
-    }, [agentId, currentSessionId, onSessionCreated]);
+    }, [agentId, currentSessionId]);
+
+    const handleDecision = useCallback((approvalId: string, decision: ApprovalDecision) => {
+        // Find the user message associated with this flow to resume it
+        // For simplicity, we'll use the last user message
+        const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
+
+        setMessages((prev) =>
+            prev.map((msg) =>
+                msg.approvalRequest?.approvalId === approvalId
+                    ? { ...msg, approvalDecision: decision }
+                    : msg
+            )
+        );
+
+        if (decision === "APPROVED" || decision === "REJECTED") {
+            if (lastUserMessage) {
+                sendMessage(lastUserMessage.content, approvalId);
+            }
+        }
+    }, [messages, sendMessage]);
 
     const handleRetry = useCallback(() => {
         if (lastFailedMessage.current) {
@@ -176,6 +237,7 @@ export function ChatWindow({
                         isStreaming={isTyping === false && msg.id === streamingMessageId && msg.role === "assistant" && msg.content.length > 0
                             ? false // done streaming
                             : msg.id === streamingMessageId && msg.role === "assistant"}
+                        onApprovalDecision={handleDecision}
                     />
                 ))}
 

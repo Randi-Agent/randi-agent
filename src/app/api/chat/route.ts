@@ -8,6 +8,7 @@ import {
   executeOpenAIToolCall,
   getAgentToolsFromConfig,
 } from "@/lib/composio/client";
+import { requiresApproval, describeToolCall } from "@/lib/composio/approval-rules";
 
 const optionalNonEmptyString = z.preprocess((value) => {
   if (typeof value !== "string") return value;
@@ -21,6 +22,7 @@ const schema = z
     sessionId: optionalNonEmptyString,
     message: z.string().min(1).max(4000),
     model: z.string().min(1).default(DEFAULT_MODEL),
+    resumeApprovalId: z.string().optional(), // set when resuming after approval
   })
   .refine((value) => value.agentId || value.sessionId, {
     message: "agentId or sessionId is required",
@@ -262,17 +264,40 @@ async function runTextOnlyChat(
   return extractTextContent(chatResponse.choices[0]?.message?.content);
 }
 
+// ---------------------------------------------------------------------------
+// APPROVAL GATE TYPES
+// ---------------------------------------------------------------------------
+interface ApprovalGateEvent {
+  __APPROVAL_REQUEST__: true;
+  approvalId: string;
+  toolCallId: string;
+  toolName: string;
+  toolArgs: string;
+  description: string;
+  sessionId: string;
+}
+
+interface RunToolChatOptions {
+  model: string;
+  baseMessages: ChatMessageParam[];
+  tools: ChatTool[];
+  userId: string;
+  forceFirstToolCall: boolean;
+  sessionId: string;
+  writer: WritableStreamDefaultWriter<Uint8Array>;
+  encoder: TextEncoder;
+}
+
 async function runToolEnabledChat(
-  model: string,
-  baseMessages: ChatMessageParam[],
-  tools: ChatTool[],
-  userId: string,
-  forceFirstToolCall: boolean
-): Promise<{ responseText: string; toolCalls: ToolExecutionLog[] }> {
+  options: RunToolChatOptions
+): Promise<{ responseText: string; toolCalls: ToolExecutionLog[]; pausedForApproval: boolean }> {
+  const { model, baseMessages, tools, userId, forceFirstToolCall, sessionId, writer, encoder } = options;
+
   if (tools.length === 0) {
     return {
       responseText: await runTextOnlyChat(model, baseMessages),
       toolCalls: [],
+      pausedForApproval: false,
     };
   }
 
@@ -295,7 +320,7 @@ async function runToolEnabledChat(
       const assistantText = extractTextContent(assistantMessage.content);
 
       if (assistantToolCalls.length === 0) {
-        return { responseText: assistantText, toolCalls };
+        return { responseText: assistantText, toolCalls, pausedForApproval: false };
       }
 
       messages.push({
@@ -305,6 +330,44 @@ async function runToolEnabledChat(
       });
 
       for (const toolCall of assistantToolCalls) {
+        // ── APPROVAL GATE ─────────────────────────────────────────────────────
+        if (requiresApproval(toolCall.function.name)) {
+          // Save a snapshot of the current message chain so we can resume later
+          const pendingMessages: ChatMessageParam[] = [
+            ...messages,
+            {
+              role: "assistant" as const,
+              content: assistantMessage.content ?? "",
+              tool_calls: assistantToolCalls,
+            },
+          ];
+
+          const approval = await prisma.toolApproval.create({
+            data: {
+              sessionId,
+              toolCallId: toolCall.id,
+              toolName: toolCall.function.name,
+              toolArgs: toolCall.function.arguments,
+              pendingMessages: JSON.stringify(pendingMessages),
+              status: "PENDING",
+            },
+          });
+
+          const event: ApprovalGateEvent = {
+            __APPROVAL_REQUEST__: true,
+            approvalId: approval.id,
+            toolCallId: toolCall.id,
+            toolName: toolCall.function.name,
+            toolArgs: toolCall.function.arguments,
+            description: describeToolCall(toolCall.function.name, toolCall.function.arguments),
+            sessionId,
+          };
+
+          await writer.write(encoder.encode(`\n__APPROVAL_REQUEST__${JSON.stringify(event)}__END__`));
+          return { responseText: "", toolCalls, pausedForApproval: true };
+        }
+        // ── END APPROVAL GATE ─────────────────────────────────────────────────
+
         const rawResult = await executeOpenAIToolCall(userId, toolCall);
         const parsedResult = parseJsonSafely(rawResult);
 
@@ -350,6 +413,7 @@ async function runToolEnabledChat(
     return {
       responseText: fallbackText,
       toolCalls,
+      pausedForApproval: false,
     };
   }
 
@@ -357,6 +421,7 @@ async function runToolEnabledChat(
     responseText:
       "I could not complete that request through tools. Please verify your Composio connections and try again.",
     toolCalls,
+    pausedForApproval: false,
   };
 }
 
@@ -373,7 +438,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { agentId, sessionId, message, model } = parsed.data;
+    const { agentId, sessionId, message, model, resumeApprovalId } = parsed.data;
 
     // Additional billing checks for metered models.
     if (!isUnmeteredModel(model)) {
@@ -477,20 +542,128 @@ export async function POST(req: NextRequest) {
     const forceFirstToolCall =
       finalToolsForRequest.length > 0 && shouldForceToolCall(message);
 
-    const responseStream = new TransformStream();
+    const responseStream = new TransformStream<Uint8Array, Uint8Array>();
     const writer = responseStream.writable.getWriter();
     const encoder = new TextEncoder();
 
     // Run the chat logic in the background so we can return the stream immediately
     (async () => {
       try {
-        const { responseText, toolCalls } = await runToolEnabledChat(
+        // ── RESUME FROM APPROVAL PATH ─────────────────────────────────────────
+        // When the user clicks Allow/Deny on an ApprovalCard, the frontend
+        // re-sends the original message with resumeApprovalId. We pick up
+        // the suspended tool chain from DB here.
+        if (resumeApprovalId && existingSession) {
+          const approval = await prisma.toolApproval.findUnique({
+            where: { id: resumeApprovalId },
+            include: { session: { select: { userId: true } } },
+          });
+
+          if (!approval || approval.session.userId !== auth.userId) {
+            await writer.write(encoder.encode("Approval not found or unauthorized."));
+            await writer.close();
+            return;
+          }
+
+          // Restore the pending message chain
+          let restoredMessages: ChatMessageParam[] = [];
+          try {
+            restoredMessages = JSON.parse(approval.pendingMessages) as ChatMessageParam[];
+          } catch {
+            await writer.write(encoder.encode("Failed to restore conversation state."));
+            await writer.close();
+            return;
+          }
+
+          let toolResultContent: string;
+          if (approval.status === "APPROVED") {
+            // Build a minimal tool_call message and execute
+            const toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall = {
+              id: approval.toolCallId,
+              type: "function",
+              function: { name: approval.toolName, arguments: approval.toolArgs },
+            };
+            toolResultContent = await executeOpenAIToolCall(auth.userId, toolCall);
+          } else {
+            // Rejected — inject a denial result so the LLM can respond gracefully
+            toolResultContent = JSON.stringify({
+              error: "User denied this action. Do not attempt to retry it.",
+            });
+          }
+
+          // Append the tool result and continue the LLM loop with remaining tools
+          restoredMessages.push({
+            role: "tool",
+            tool_call_id: approval.toolCallId,
+            content: toolResultContent,
+          });
+
+          const { responseText: resumeText, toolCalls: resumeToolCalls, pausedForApproval } =
+            await runToolEnabledChat({
+              model,
+              baseMessages: restoredMessages,
+              tools: finalToolsForRequest,
+              userId: auth.userId,
+              forceFirstToolCall: false,
+              sessionId: existingSession.id,
+              writer,
+              encoder,
+            });
+
+          if (pausedForApproval) {
+            // Another approval needed — stream already handled by the gate
+            await writer.close();
+            return;
+          }
+
+          const normalizedResumeText =
+            resumeText.trim() ||
+            (approval.status === "REJECTED"
+              ? "I've cancelled that action as you requested."
+              : "Done! Let me know if you need anything else.");
+
+          // Save assistant response to DB
+          await prisma.chatSession.update({
+            where: { id: existingSession.id },
+            data: { updatedAt: new Date() },
+          });
+          await prisma.chatMessage.create({
+            data: {
+              sessionId: existingSession.id,
+              role: "assistant",
+              content: normalizedResumeText,
+              toolCalls: resumeToolCalls.length > 0 ? JSON.stringify(resumeToolCalls) : null,
+            },
+          });
+
+          // Stream assistant response
+          const resumeWords = normalizedResumeText.split(" ");
+          for (let i = 0; i < resumeWords.length; i++) {
+            await writer.write(encoder.encode(resumeWords[i] + (i < resumeWords.length - 1 ? " " : "")));
+            await new Promise((r) => setTimeout(r, 20));
+          }
+          await writer.close();
+          return;
+        }
+        // ── END RESUME PATH ───────────────────────────────────────────────────
+
+        const { responseText, toolCalls, pausedForApproval } = await runToolEnabledChat({
           model,
-          messages,
-          finalToolsForRequest,
-          auth.userId,
-          forceFirstToolCall
-        );
+          baseMessages: messages,
+          tools: finalToolsForRequest,
+          userId: auth.userId,
+          forceFirstToolCall,
+          sessionId: existingSession?.id ?? "__new__",
+          writer,
+          encoder,
+        });
+
+        // If we paused for approval, the gate already wrote to the stream.
+        // Don't write anything else — just close the stream.
+        if (pausedForApproval) {
+          await writer.close();
+          return;
+        }
 
         let resolvedResponseText = responseText.trim();
         if (forceFirstToolCall && toolCalls.length === 0) {

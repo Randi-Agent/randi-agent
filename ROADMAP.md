@@ -27,10 +27,10 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 
 ## 🧠 Phase 4: Advanced Intelligence & UI
 **Objective**: Transform from simple chat to complex agentic workflows.
-- [ ] **Composio Expansion**: Add 50+ specialized toolkits (GitHub, Google Workspace, Financial APIs).
-- [ ] **Multi-Agent Orchestration**: Allow "Lead" agents to delegate sub-tasks to "Specialist" agents.
-- [ ] **Streaming 2.0**: Enhanced markdown rendering with code execution previews.
-- [ ] **Human-in-the-loop**: Approval UI for sensitive agent actions (e.g., "Allow Randi to send this email?").
+- [x] **Composio Expansion**: Add 50+ specialized toolkits (GitHub, Google Workspace, Financial APIs).
+- [ ] Multi-Agent Orchestration: Allow "Lead" agents to delegate sub-tasks to "Specialist" agents.
+- [x] **Streaming 2.0**: Enhanced markdown rendering with code execution previews.
+- [x] **Human-in-the-loop**: Approval UI for sensitive agent actions (e.g., "Allow Randi to send this email?").
 
 ## 🌎 Phase 5: Ecosystem Expansion
 **Objective**: Scale beyond a single web application.
