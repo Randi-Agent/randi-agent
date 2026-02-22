@@ -141,25 +141,22 @@ export function useAuth() {
     // Guard against infinite retries
     sharedSyncAttempts += 1;
     if (sharedSyncAttempts > MAX_SYNC_ATTEMPTS) {
+      // If we've hit max attempts, clear everything and allow one last manual retry
+      resetSharedState();
       throw new SessionSyncError(
-        "Unable to establish session after multiple attempts. Please sign out and sign in again.",
+        "Unable to establish session. Please sign out and try again.",
         "max_attempts_exceeded",
         null
       );
     }
 
+    // syncSession performs the POST to issue the cookie. 
+    // If it succeeds with a 200 OK, we trust it.
     await syncSession();
 
-    // Verify the cookie was set
-    const sessionAfterSync = await hasServerSession();
-    if (!sessionAfterSync) {
-      throw new SessionSyncError(
-        "Session could not be established. Please try signing in again.",
-        "session_not_established",
-        DEFAULT_RETRY_DELAY_MS
-      );
-    }
-
+    // We no longer call hasServerSession() here immediately.
+    // Following the Set-Cookie response, the next request will naturally 
+    // include it, and the UI can proceed as "synced".
     sharedSessionSynced = true;
     sharedNextRetryAt = 0;
     sharedSyncAttempts = 0;

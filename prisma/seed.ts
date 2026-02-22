@@ -84,7 +84,35 @@ async function main() {
     },
   });
 
-  console.log("Seeded agents:", { researchAgent, codeAgent, productivityAgent });
+  // 4. Randi Lead Agent (Orchestrator)
+  const leadAgent = await prisma.agentConfig.upsert({
+    where: { slug: "randi-lead" },
+    update: {
+      tools: JSON.stringify({
+        toolkits: [],
+        tools: ["delegate_to_specialist"],
+      }),
+    },
+    create: {
+      slug: "randi-lead",
+      name: "Randi (Lead)",
+      description: "The primary orchestrator of the Randi platform. Can handle general queries and delegate specialized tasks to expert agents.",
+      image: "randi/lead-agent",
+      internalPort: 80,
+      creditsPerHour: 0,
+      memoryLimit: BigInt(0),
+      cpuLimit: BigInt(0),
+      systemPrompt: "You are Randi, the lead agent platform director. Your job is to facilitate user requests. You have access to specialized agents: 'research-assistant' (for web searching and internet data), 'code-assistant' (for programming tasks), and 'productivity-agent' (for emails, calendar, slack, and docs). When a user request clearly falls into one of these domains, use the 'delegate_to_specialist' tool to get help.\n\nCrucially, for complex repository-level coding tasks, bug fixes, or new feature implementations, you have access to a specialized 'spawn_autonomous_developer' tool. This launches a background coding agent via the Agent Orchestrator that can work autonomously on deep code changes. Use this when the user asks for a 'fix', 'build', or 'implementation' that requires more than just a quick code snippet.\n\nBe professional, helpful, and concise.",
+      tools: JSON.stringify({
+        toolkits: [],
+        tools: ["delegate_to_specialist", "spawn_autonomous_developer"],
+      }),
+      defaultModel: "meta-llama/llama-3.3-70b-instruct:free",
+      active: true,
+    },
+  });
+
+  console.log("Seeded agents:", { researchAgent, codeAgent, productivityAgent, leadAgent });
 }
 
 main()

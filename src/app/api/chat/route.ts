@@ -9,6 +9,11 @@ import {
   getAgentToolsFromConfig,
 } from "@/lib/composio/client";
 import { requiresApproval, describeToolCall } from "@/lib/composio/approval-rules";
+import {
+  ORCHESTRATION_TOOLS,
+  executeOrchestrationToolCall,
+  isOrchestrationTool
+} from "@/lib/orchestration/tools";
 
 const optionalNonEmptyString = z.preprocess((value) => {
   if (typeof value !== "string") return value;
@@ -368,7 +373,14 @@ async function runToolEnabledChat(
         }
         // ── END APPROVAL GATE ─────────────────────────────────────────────────
 
-        const rawResult = await executeOpenAIToolCall(userId, toolCall);
+        let rawResult: string;
+        if (isOrchestrationTool(toolCall.function.name)) {
+          const args = JSON.parse(toolCall.function.arguments);
+          rawResult = await executeOrchestrationToolCall(userId, toolCall.function.name, args, sessionId);
+        } else {
+          rawResult = await executeOpenAIToolCall(userId, toolCall);
+        }
+
         const parsedResult = parseJsonSafely(rawResult);
 
         let error: string | undefined;
@@ -530,6 +542,20 @@ export async function POST(req: NextRequest) {
       ? toolsForRequest.filter((tool) => !tool.function.name.startsWith("GITHUB_"))
       : toolsForRequest;
 
+    // Merge Orchestration Tools if agent config asks for them
+    let combinedTools = finalToolsForRequest;
+    if (agent.tools) {
+      try {
+        const parsedConfig = JSON.parse(agent.tools);
+        const requestedInternalTools = Array.isArray(parsedConfig.tools) ? parsedConfig.tools : [];
+        if (requestedInternalTools.includes("delegate_to_specialist")) {
+          combinedTools = [...combinedTools, ...ORCHESTRATION_TOOLS];
+        }
+      } catch (err) {
+        console.warn("Failed to parse agent tools for orchestration check", err);
+      }
+    }
+
     const messages: ChatMessageParam[] = [
       { role: "system", content: agent.systemPrompt },
       ...(finalToolsForRequest.length > 0
@@ -602,7 +628,7 @@ export async function POST(req: NextRequest) {
             await runToolEnabledChat({
               model,
               baseMessages: restoredMessages,
-              tools: finalToolsForRequest,
+              tools: combinedTools,
               userId: auth.userId,
               forceFirstToolCall: false,
               sessionId: existingSession.id,
@@ -650,7 +676,7 @@ export async function POST(req: NextRequest) {
         const { responseText, toolCalls, pausedForApproval } = await runToolEnabledChat({
           model,
           baseMessages: messages,
-          tools: finalToolsForRequest,
+          tools: combinedTools,
           userId: auth.userId,
           forceFirstToolCall,
           sessionId: existingSession?.id ?? "__new__",

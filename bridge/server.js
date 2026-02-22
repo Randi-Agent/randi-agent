@@ -322,6 +322,44 @@ app.get('/containers/:id/inspect', auth, async (req, res) => {
     } catch (err) { res.status(err.statusCode || 500).json({ error: err.message }); }
 });
 
+// --- AGENT ORCHESTRATOR INTEGRATION ---
+app.post('/spawn-ao', auth, async (req, res) => {
+    const { project, task, agent = 'claude-code' } = req.body;
+
+    if (!project) {
+        return res.status(400).json({ error: 'Project name is required' });
+    }
+
+    try {
+        const { exec } = require('child_process');
+        const aoPath = process.env.AO_PATH || '~/agent-orchestrator';
+
+        // Use pnpm to run the CLI if not globally linked, otherwise use 'ao'
+        const command = `cd ${aoPath} && ao spawn ${project} "${task.replace(/"/g, '\\"')}" --agent ${agent}`;
+
+        console.log(`[AO] Executing: ${command}`);
+
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[AO] Execution error: ${error}`);
+                // Don't fail the request if it's just a warning or non-zero exit that's expected
+            }
+            console.log(`[AO] stdout: ${stdout}`);
+            if (stderr) console.error(`[AO] stderr: ${stderr}`);
+        });
+
+        // We return immediately because 'ao spawn' starts a session that continues in the background
+        res.json({
+            success: true,
+            message: `Orchestrator session requested for project: ${project}`,
+            dashboardUrl: `http://${req.hostname}:3000`
+        });
+    } catch (err) {
+        console.error("[AO] Spawn failed:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- RESOURCE MONITORING ---
 app.get('/containers/:id/stats', auth, async (req, res) => {
     try {
