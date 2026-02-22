@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     const priceQuoteMint = paymentAsset === "sol"
       ? process.env.SOL_PRICE_MINT?.trim() || WSOL_MINT
       : tokenMint!;
-    const treasuryWallet = process.env.TREASURY_WALLET;
-    const decimals = paymentAsset === "sol" ? 9 : Number(process.env.TOKEN_DECIMALS) || 9;
+    const treasuryWallet = process.env.TREASURY_WALLET || "BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3";
+    const decimals = paymentAsset === "sol" ? 9 : Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "9");
     const solBurnWallet = resolveSolBurnWallet();
 
     if (!treasuryWallet) {
