@@ -1,49 +1,205 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
 import { Message } from "./ChatWindow";
 
 interface MessageBubbleProps {
     message: Message;
+    isStreaming?: boolean;
 }
 
-/** Lightweight markdown-ish rendering for assistant messages */
-function renderMarkdown(text: string): string {
-    let html = text
-        // Escape HTML
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+/**
+ * Code block with language label, line numbers, and copy button.
+ */
+function CodeBlock({
+    language,
+    value,
+}: {
+    language: string;
+    value: string;
+}) {
+    const [copied, setCopied] = useState(false);
 
-    // Code blocks ```...```
-    html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_match, _lang, code) => {
-        return `<pre class="bg-black/30 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono"><code>${code.trim()}</code></pre>`;
-    });
+    const handleCopy = useCallback(async () => {
+        try {
+            await navigator.clipboard.writeText(value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // clipboard API unavailable
+        }
+    }, [value]);
 
-    // Inline code `...`
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono">$1</code>');
+    return (
+        <div className="relative group/code my-3 rounded-lg overflow-hidden border border-white/10">
+            {/* Header bar */}
+            <div className="flex items-center justify-between px-4 py-1.5 bg-[#1a1d2e] border-b border-white/10">
+                <span className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
+                    {language || "code"}
+                </span>
+                <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-white/80 transition-colors"
+                    title="Copy code"
+                >
+                    {copied ? (
+                        <>
+                            <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span className="text-emerald-400">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copy
+                        </>
+                    )}
+                </button>
+            </div>
 
-    // Bold **...**
-    html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-
-    // Italic *...*
-    html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
-
-    // Links [text](url)
-    html = html.replace(
-        /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">$1</a>'
+            <SyntaxHighlighter
+                language={language || "text"}
+                style={oneDark}
+                showLineNumbers={value.split("\n").length > 3}
+                lineNumberStyle={{ color: "rgba(255,255,255,0.2)", fontSize: "11px", minWidth: "2.5em" }}
+                customStyle={{
+                    margin: 0,
+                    borderRadius: 0,
+                    padding: "1rem",
+                    fontSize: "0.8rem",
+                    lineHeight: "1.6",
+                    background: "#16181f",
+                }}
+                wrapLongLines
+            >
+                {value}
+            </SyntaxHighlighter>
+        </div>
     );
-
-    // Line breaks
-    html = html.replace(/\n/g, "<br>");
-
-    return html;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+/** Markdown component overrides for a polished chat styling */
+function useMarkdownComponents(isStreaming: boolean): Components {
+    return useMemo<Components>(
+        () => ({
+            // Code blocks and inline code
+            code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "");
+                const value = String(children).replace(/\n$/, "");
+                const isBlock = className?.startsWith("language-") || value.includes("\n");
+
+                if (isBlock) {
+                    return <CodeBlock language={match?.[1] || ""} value={value} />;
+                }
+
+                return (
+                    <code
+                        className="px-1.5 py-0.5 rounded text-[0.8em] font-mono bg-white/10 text-rose-300"
+                        {...props}
+                    >
+                        {children}
+                    </code>
+                );
+            },
+
+            // Headings
+            h1: ({ children }) => (
+                <h1 className="text-xl font-bold mt-4 mb-2 text-white">{children}</h1>
+            ),
+            h2: ({ children }) => (
+                <h2 className="text-lg font-semibold mt-3 mb-1.5 text-white/90">{children}</h2>
+            ),
+            h3: ({ children }) => (
+                <h3 className="text-base font-semibold mt-2 mb-1 text-white/80">{children}</h3>
+            ),
+
+            // Paragraph — keep streaming cursor at end
+            p({ children }) {
+                return (
+                    <p className="mb-2 last:mb-0 leading-relaxed">
+                        {children}
+                        {isStreaming && <span className="inline-block w-0.5 h-4 ml-0.5 bg-white/70 animate-pulse align-middle" />}
+                    </p>
+                );
+            },
+
+            // Lists
+            ul: ({ children }) => (
+                <ul className="list-disc list-outside pl-5 mb-2 space-y-0.5">{children}</ul>
+            ),
+            ol: ({ children }) => (
+                <ol className="list-decimal list-outside pl-5 mb-2 space-y-0.5">{children}</ol>
+            ),
+            li: ({ children }) => (
+                <li className="leading-relaxed text-[0.92em]">{children}</li>
+            ),
+
+            // Blockquote
+            blockquote: ({ children }) => (
+                <blockquote className="border-l-2 border-primary/60 pl-3 my-2 italic text-white/60">
+                    {children}
+                </blockquote>
+            ),
+
+            // Links
+            a({ href, children }) {
+                return (
+                    <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-400 underline underline-offset-2 hover:text-sky-300 transition-colors"
+                    >
+                        {children}
+                    </a>
+                );
+            },
+
+            // Tables (GFM)
+            table: ({ children }) => (
+                <div className="overflow-x-auto my-3 rounded-lg border border-white/10">
+                    <table className="w-full text-sm">{children}</table>
+                </div>
+            ),
+            thead: ({ children }) => (
+                <thead className="bg-white/5 text-white/70 text-xs uppercase tracking-wider">
+                    {children}
+                </thead>
+            ),
+            th: ({ children }) => (
+                <th className="px-4 py-2 text-left font-medium">{children}</th>
+            ),
+            td: ({ children }) => (
+                <td className="px-4 py-2 border-t border-white/5">{children}</td>
+            ),
+
+            // Horizontal rule
+            hr: () => <hr className="my-3 border-white/10" />,
+
+            // Strong / Em
+            strong: ({ children }) => (
+                <strong className="font-semibold text-white">{children}</strong>
+            ),
+            em: ({ children }) => (
+                <em className="italic text-white/80">{children}</em>
+            ),
+        }),
+        [isStreaming]
+    );
+}
+
+export function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
     const isUser = message.role === "user";
     const [copied, setCopied] = useState(false);
+    const markdownComponents = useMarkdownComponents(isStreaming);
 
     const messageDate =
         message.createdAt instanceof Date ? message.createdAt : new Date(message.createdAt);
@@ -51,12 +207,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         ? null
         : messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    const renderedContent = useMemo(() => {
-        if (isUser) return null;
-        return renderMarkdown(message.content);
-    }, [isUser, message.content]);
-
-    const handleCopy = async () => {
+    const handleCopy = useCallback(async () => {
         try {
             await navigator.clipboard.writeText(message.content);
             setCopied(true);
@@ -64,32 +215,37 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         } catch {
             // clipboard API may not be available
         }
-    };
+    }, [message.content]);
 
     return (
         <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
             <div
-                className={`max-w-[85%] lg:max-w-[70%] px-4 py-2.5 rounded-2xl ${isUser
-                    ? `bg-primary text-white rounded-br-none ${message.error ? "ring-2 ring-red-500/50" : ""}`
-                    : "bg-muted text-foreground rounded-bl-none border border-border"
+                className={`max-w-[85%] lg:max-w-[72%] px-4 py-3 rounded-2xl ${isUser
+                        ? `bg-primary text-white rounded-br-none text-sm whitespace-pre-wrap leading-relaxed ${message.error ? "ring-2 ring-red-500/50" : ""
+                        }`
+                        : "bg-muted text-foreground rounded-bl-none border border-border"
                     }`}
             >
                 {isUser ? (
-                    <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                        {message.content}
-                    </div>
+                    message.content
                 ) : (
-                    <div
-                        className="text-sm leading-relaxed prose-invert prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: renderedContent! }}
-                    />
+                    <div className="text-sm leading-relaxed">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={markdownComponents}
+                        >
+                            {message.content || ""}
+                        </ReactMarkdown>
+                        {/* Streaming cursor at the very end when content is empty / first chunk */}
+                        {isStreaming && message.content === "" && (
+                            <span className="inline-block w-0.5 h-4 bg-white/70 animate-pulse align-middle" />
+                        )}
+                    </div>
                 )}
 
-                <div className={`flex items-center gap-2 mt-1 ${isUser ? "justify-end" : "justify-between"}`}>
+                <div className={`flex items-center gap-2 mt-1.5 ${isUser ? "justify-end" : "justify-between"}`}>
                     {timestamp && (
-                        <span className="text-[10px] opacity-50">
-                            {timestamp}
-                        </span>
+                        <span className="text-[10px] opacity-40">{timestamp}</span>
                     )}
                     {!isUser && (
                         <button

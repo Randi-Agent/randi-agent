@@ -5,10 +5,13 @@ import {
   resolveComposioUserId,
 } from "@/lib/composio/client";
 import {
-  SUPPORTED_COMPOSIO_TOOLKITS,
+  COMPOSIO_TOOLKITS_DEDUPED,
   getComposioAuthConfigOverride,
   getComposioSharedEntityOverride,
 } from "@/lib/composio/integrations";
+
+// Use the deduped list as the canonical reference
+const SUPPORTED_COMPOSIO_TOOLKITS = COMPOSIO_TOOLKITS_DEDUPED;
 
 interface ConnectedAccountSummary {
   id: string;
@@ -136,6 +139,9 @@ export async function GET() {
       return {
         slug: toolkit.slug,
         label: toolkit.label,
+        category: toolkit.category,
+        icon: toolkit.icon,
+        description: toolkit.description,
         hasAuthConfig: Boolean(authConfig?.selectedAuthConfigId),
         authConfigId: authConfig?.selectedAuthConfigId ?? null,
         authConfigName: authConfig?.selectedAuthConfigName ?? null,

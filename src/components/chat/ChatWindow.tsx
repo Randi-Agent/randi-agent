@@ -27,6 +27,7 @@ export function ChatWindow({
 }: ChatWindowProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [isTyping, setIsTyping] = useState(false);
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [currentSessionId, setCurrentSessionId] = useState<string | undefined>(sessionId);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -97,6 +98,7 @@ export function ChatWindow({
             };
             setMessages((prev) => [...prev, assistantMessage]);
             setIsTyping(false); // Stop typing indicator since we're streaming
+            setStreamingMessageId(assistantId);
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -117,6 +119,7 @@ export function ChatWindow({
                     )
                 );
             }
+            setStreamingMessageId(null);
         } catch (err) {
             console.error("Chat error:", err);
             const errorMsg = err instanceof Error ? err.message : "Failed to send message";
@@ -132,6 +135,7 @@ export function ChatWindow({
             );
         } finally {
             setIsTyping(false);
+            setStreamingMessageId(null);
         }
     }, [agentId, currentSessionId, onSessionCreated]);
 
@@ -166,7 +170,13 @@ export function ChatWindow({
                 )}
 
                 {messages.map((msg) => (
-                    <MessageBubble key={msg.id} message={msg} />
+                    <MessageBubble
+                        key={msg.id}
+                        message={msg}
+                        isStreaming={isTyping === false && msg.id === streamingMessageId && msg.role === "assistant" && msg.content.length > 0
+                            ? false // done streaming
+                            : msg.id === streamingMessageId && msg.role === "assistant"}
+                    />
                 ))}
 
                 {isTyping && (
