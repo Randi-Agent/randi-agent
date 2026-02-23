@@ -13,7 +13,8 @@ function clearAuthCookie(response: NextResponse): NextResponse {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname, method } = request.nextUrl;
+  const { pathname } = request.nextUrl;
+  const method = request.method;
 
   // Simple CSRF protection for mutating API requests
   if (pathname.startsWith("/api/") && ["POST", "DELETE", "PUT", "PATCH"].includes(method)) {

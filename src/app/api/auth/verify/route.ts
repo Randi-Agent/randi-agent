@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     sameSite: "lax",
     maxAge: 24 * 60 * 60,
     path: "/",
+    domain: ".randi.chat",
   });
 
   return response;
