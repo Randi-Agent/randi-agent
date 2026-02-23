@@ -1,9 +1,11 @@
-import { Connection, clusterApiUrl, Cluster } from "@solana/web3.js";
+import { Connection } from "@solana/web3.js";
+
+const DEFAULT_MAINNET_RPC = "https://api.mainnet-beta.solana.com";
 
 const RPC_URL =
   process.env.SOLANA_RPC_URL ||
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-  clusterApiUrl("mainnet" as Cluster);
+  DEFAULT_MAINNET_RPC;
 
 const globalForSolana = globalThis as unknown as {
   solanaConnection: Connection | undefined;
