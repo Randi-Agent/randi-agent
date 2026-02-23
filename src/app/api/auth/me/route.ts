@@ -17,6 +17,7 @@ export async function GET() {
       walletAddress: true,
       username: true,
       creditBalance: true,
+      tier: true,
     },
   });
 

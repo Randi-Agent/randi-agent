@@ -18,6 +18,10 @@ model User {
   subscriptionExpiresAt DateTime?
   nonce                 String?
   nonceExpiresAt        DateTime?
+  // Staking fields for token-gating
+  stakedAmount          BigInt      @default(0)    // Amount of $RANDI staked
+  stakingLevel          String      @default("NONE") // NONE, BRONZE, SILVER, GOLD
+  unstakedAt            DateTime?            // When user unstakes (if applicable)
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
@@ -130,6 +134,7 @@ model AgentConfig {
   image          String
   internalPort   Int
   creditsPerHour Int
+  requiredTier   String  @default("FREE") // FREE, PRO, BOTH
   memoryLimit    BigInt
   cpuLimit       BigInt
   pidLimit       Int     @default(256)

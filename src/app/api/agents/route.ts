@@ -10,6 +10,7 @@ export async function GET() {
       name: true,
       description: true,
       creditsPerHour: true,
+      requiredTier: true,
       active: true,
     },
     orderBy: { name: "asc" },

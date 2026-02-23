@@ -3,13 +3,15 @@
 import { useCredits } from "@/hooks/useCredits";
 import { PurchaseForm } from "@/components/credits/PurchaseForm";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
+import { useStaking } from "@/hooks/useStaking";
 
 export default function CreditsPage() {
   const { subscription, isSubscribed, transactions, loading, error }
     = useCredits();
   const { priceUsd } = useTokenPrice();
+  const { staking, loading: stakingLoading, verifying, verifyStaking, hasStaking, error: stakingError } = useStaking();
 
-  if (loading) {
+  if (loading || stakingLoading) {
     return (
       <div className="p-6 space-y-6">
         <h1 className="text-2xl font-bold">Subscription</h1>
@@ -63,6 +65,114 @@ export default function CreditsPage() {
           </div>
         </div>
       )}
+
+      {/* Staking Status */}
+      <div className="bg-card border border-border rounded-xl p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">Staking</h2>
+          <button
+            onClick={verifyStaking}
+            disabled={verifying || !staking?.walletAddress}
+            className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {verifying ? "Verifying..." : "Verify Holdings"}
+          </button>
+        </div>
+
+        {stakingError && (
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300 mb-3">
+            {stakingError}
+          </div>
+        )}
+
+        {staking?.walletAddress ? (
+          <div className="space-y-4">
+            {/* Current Tier */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${staking.stakingLevel === "GOLD" ? "bg-yellow-500/20 text-yellow-400" :
+                    staking.stakingLevel === "SILVER" ? "bg-gray-300/20 text-gray-300" :
+                      staking.stakingLevel === "BRONZE" ? "bg-amber-700/20 text-amber-600" :
+                        "bg-muted text-muted-foreground"
+                  }`}>
+                  {staking.stakingLevel === "NONE" ? "-" : staking.stakingLevel.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-medium">{staking.stakingLevel} Tier</p>
+                  <p className="text-sm text-muted-foreground">
+                    {staking.stakedAmountFormatted} $RANDI staked
+                  </p>
+                </div>
+              </div>
+              {hasStaking && (
+                <span className="text-xs px-2 py-1 bg-success/10 text-success rounded-full">
+                  Active
+                </span>
+              )}
+            </div>
+
+            {/* Progress Bar */}
+            {staking.nextTier && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Progress to {staking.nextTier.level}</span>
+                  <span>{staking.tierProgress}%</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500"
+                    style={{ width: `${staking.tierProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Need {staking.nextTier.amountNeededFormatted} more $RANDI to reach {staking.nextTier.level}
+                </p>
+              </div>
+            )}
+
+            {/* Tier Info */}
+            <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-border">
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "BRONZE" || staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-amber-700/10" : "bg-muted/50"}`}>
+                <p className="text-xs text-muted-foreground">Bronze</p>
+                <p className="text-sm font-medium">1K</p>
+              </div>
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-gray-300/10" : "bg-muted/50"}`}>
+                <p className="text-xs text-muted-foreground">Silver</p>
+                <p className="text-sm font-medium">10K</p>
+              </div>
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "GOLD" ? "bg-yellow-500/10" : "bg-muted/50"}`}>
+                <p className="text-xs text-muted-foreground">Gold</p>
+                <p className="text-sm font-medium">100K</p>
+              </div>
+            </div>
+
+            {/* Premium Models Info */}
+            {staking.stakingLevel !== "NONE" && (
+              <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
+                <p className="font-medium text-foreground mb-1">Premium Models Unlocked:</p>
+                <p>• o1, o1-mini, Claude 3.5 Sonnet (Silver+)</p>
+                {staking.stakingLevel === "GOLD" && <p>• o1-pro (Gold exclusive)</p>}
+              </div>
+            )}
+
+            {/* Stake More Button */}
+            {staking.stakingLevel !== "GOLD" && (
+              <a
+                href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"
+              >
+                Stake More $RANDI
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="text-center text-muted-foreground py-4">
+            <p className="text-sm">Connect your wallet to view staking status</p>
+          </div>
+        )}
+      </div>
 
       {/* Purchase Form */}
       <PurchaseForm />

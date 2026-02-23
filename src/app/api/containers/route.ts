@@ -141,6 +141,18 @@ export async function POST(request: NextRequest) {
       const user = await tx.user.findUnique({ where: { id: auth.userId } });
       if (!user) throw new Error("USER_NOT_FOUND");
 
+      // Check user's tier against agent's required tier
+      const userTier = user.tier || "FREE";
+      const requiredTier = agent.requiredTier || "FREE";
+
+      if (requiredTier !== "BOTH" && requiredTier !== userTier) {
+        if (requiredTier === "PRO") {
+          throw new Error("TIER_REQUIRED_PRO");
+        } else {
+          throw new Error("TIER_REQUIRED_FREE");
+        }
+      }
+
       const creditsNeeded = hours * agent.creditsPerHour;
 
       if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
@@ -285,6 +297,16 @@ export async function POST(request: NextRequest) {
       const message = error.message;
       if (message === "AGENT_NOT_FOUND") return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       if (message === "INSUFFICIENT_CREDITS") return NextResponse.json({ error: "Insufficient credits" }, { status: 402 });
+      if (message === "TIER_REQUIRED_PRO") return NextResponse.json({
+        error: "Pro subscription required",
+        detail: "This agent requires a Pro subscription. Please upgrade to access this agent.",
+        upgradeRequired: true
+      }, { status: 403 });
+      if (message === "TIER_REQUIRED_FREE") return NextResponse.json({
+        error: "Free tier not allowed",
+        detail: "This agent is only available to Pro subscribers.",
+        upgradeRequired: true
+      }, { status: 403 });
       if (message === "USERNAME_GENERATION_FAILED") {
         return NextResponse.json(
           { error: "Unable to prepare account profile" },

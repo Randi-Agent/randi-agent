@@ -14,6 +14,11 @@ import {
   executeOrchestrationToolCall,
   isOrchestrationTool
 } from "@/lib/orchestration/tools";
+import {
+  validateModelAccess,
+  isPremiumModel,
+  type StakingLevel
+} from "@/lib/token-gating";
 
 const optionalNonEmptyString = z.preprocess((value) => {
   if (typeof value !== "string") return value;
@@ -504,7 +509,7 @@ export async function POST(req: NextRequest) {
     if (!isUnmeteredModel(model)) {
       const user = await prisma.user.findUnique({
         where: { id: auth.userId },
-        select: { subscriptionStatus: true, subscriptionExpiresAt: true },
+        select: { subscriptionStatus: true, subscriptionExpiresAt: true, stakingLevel: true, stakedAmount: true },
       });
 
       const isSubscribed =
@@ -513,13 +518,32 @@ export async function POST(req: NextRequest) {
         user.subscriptionExpiresAt > new Date();
 
       if (!isSubscribed) {
-        return NextResponse.json(
-          {
-            error: "Premium models require a Randi Pro subscription.",
-            code: "SUBSCRIPTION_REQUIRED",
-          },
-          { status: 403 }
-        );
+        // Check if this is a premium model that can be accessed via staking
+        if (isPremiumModel(model)) {
+          const userStakingLevel = (user?.stakingLevel || "NONE") as StakingLevel;
+          const accessCheck = validateModelAccess(model, userStakingLevel);
+
+          if (!accessCheck.allowed) {
+            return NextResponse.json(
+              {
+                error: accessCheck.reason,
+                code: "STAKING_REQUIRED",
+                model,
+                requiredStakingLevel: userStakingLevel,
+              },
+              { status: 403 }
+            );
+          }
+          // User has sufficient staking, allow access
+        } else {
+          return NextResponse.json(
+            {
+              error: "Premium models require a Randi Pro subscription.",
+              code: "SUBSCRIPTION_REQUIRED",
+            },
+            { status: 403 }
+          );
+        }
       }
     }
 

@@ -11,14 +11,29 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<AgentCatalogItem[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<AgentCatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userTier, setUserTier] = useState<string>("FREE");
   const { launchContainer } = useContainers();
   const { balance } = useCredits();
 
   useEffect(() => {
+    // Fetch user info including tier
+    fetch("/api/auth/me")
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Not authenticated");
+      })
+      .then((data) => {
+        setUserTier(data.user?.tier || "FREE");
+      })
+      .catch(() => {
+        setUserTier("FREE");
+      });
+
+    // Fetch agents
     fetch("/api/agents")
       .then((res) => res.json())
       .then((data) => setAgents(data.agents || []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
@@ -46,6 +61,7 @@ export default function AgentsPage() {
             <AgentCard
               key={agent.id}
               agent={agent}
+              userTier={userTier}
               onLaunch={setSelectedAgent}
             />
           ))}
