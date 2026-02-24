@@ -124,17 +124,6 @@ async function resolveSolanaChain(): Promise<"solana:mainnet" | "solana:devnet" 
   return cachedSolanaChain;
 }
 
-declare global {
-  interface Window {
-    phantom?: {
-      solana?: {
-        isPhantom?: boolean;
-        connect(): Promise<{ publicKey: { toString(): string } }>;
-        signTransaction(tx: Transaction): Promise<Transaction>;
-      };
-    };
-  }
-}
 
 export function useSPLTransfer() {
   const [sending, setSending] = useState(false);
@@ -154,7 +143,6 @@ export function useSPLTransfer() {
       setSending(true);
       try {
         const standardWallet = wallets[0];
-        const phantom = window.phantom?.solana;
 
         const rpcUrl = await resolveRpcUrl();
         const connection = new Connection(rpcUrl, "confirmed");
@@ -163,11 +151,7 @@ export function useSPLTransfer() {
         if (standardWallet) {
           fromWallet = new PublicKey(standardWallet.address);
         } else {
-          if (!phantom?.isPhantom) {
-            throw new Error("No supported Solana wallet found. Connect a wallet to continue.");
-          }
-          const { publicKey: phantomPubkey } = await phantom.connect();
-          fromWallet = new PublicKey(phantomPubkey.toString());
+          throw new Error("No supported Solana wallet found. Connect a wallet via Privy to continue.");
         }
         const toWallet = new PublicKey(params.recipient);
         const paymentAsset = params.paymentAsset || "spl";
@@ -221,14 +205,19 @@ export function useSPLTransfer() {
             throw new Error(`Token mint not found on selected Solana network (${rpcUrl})`);
           }
 
-          const tokenProgramId = mintAccountInfo.owner.equals(TOKEN_PROGRAM_ID)
+          const ownerStr = mintAccountInfo.owner.toBase58();
+          // Literal constants for Solana Token Programs to ensure matches regardless of library version
+          const TOKEN_PROGRAM_ID_STR = "TokenkegQfeZyiNwAJbVNBH4DQ3RBN24rcnEiS76vT";
+          const TOKEN_2022_PROGRAM_ID_STR = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+
+          const tokenProgramId = (ownerStr === TOKEN_PROGRAM_ID_STR)
             ? TOKEN_PROGRAM_ID
-            : mintAccountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)
+            : (ownerStr === TOKEN_2022_PROGRAM_ID_STR)
               ? TOKEN_2022_PROGRAM_ID
               : null;
 
           if (!tokenProgramId) {
-            throw new Error("Unsupported token program for selected mint");
+            throw new Error(`The address ${mint.toBase58()} is not a valid Token Mint. It is owned by ${ownerStr}, which is not a recognized Solana Token Program. Ensure you are on the correct network (${rpcUrl}).`);
           }
 
           const fromATA = await getAssociatedTokenAddress(
@@ -327,10 +316,7 @@ export function useSPLTransfer() {
           });
           signature = bs58.encode(result.signature);
         } else {
-          const signedTx = await phantom!.signTransaction(tx);
-          signature = await connection.sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: false,
-          });
+          throw new Error("Standard wallet signing failed: No wallet available");
         }
 
         await confirmWithFallback(connection, signature, blockhash, lastValidBlockHeight);

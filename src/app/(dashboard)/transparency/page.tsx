@@ -47,14 +47,14 @@ export default function TransparencyPage() {
         if (!amount) return "0";
         const val = typeof amount === "string" ? BigInt(amount) : amount;
         // Assuming 9 decimals for RANDI based on previous code
-        const base = Number(val) / 1e9;
+        const base = Number(val) / 1e6;
         return formatRandi(base);
     };
 
     const formatUsd = (amount: string | bigint | undefined) => {
         if (!amount || !priceUsd) return "$0.00";
         const val = typeof amount === "string" ? BigInt(amount) : amount;
-        const tokens = Number(val) / 1e9;
+        const tokens = Number(val) / 1e6;
         const usd = tokens * priceUsd;
         return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(usd);
     };

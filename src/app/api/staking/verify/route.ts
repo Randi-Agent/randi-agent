@@ -49,31 +49,34 @@ export async function POST(req: NextRequest) {
             const tokenMint = new PublicKey(RANDI_TOKEN_MINT);
             const walletAddress = new PublicKey(user.walletAddress);
 
-            // Get the associated token account address
+            // 1. Resolve token program by checking mint account info
+            const mintAccountInfo = await connection.getAccountInfo(tokenMint);
+            if (!mintAccountInfo) {
+                return NextResponse.json({ error: "Token mint not found on Solana" }, { status: 404 });
+            }
+
+            const tokenProgramId = mintAccountInfo.owner;
+
+            // 2. Get the associated token account address with correct program ID
             const ata = await getAssociatedTokenAddress(
                 tokenMint,
                 walletAddress,
-                false
+                false,
+                tokenProgramId
             );
 
-            // Fetch the token account info
-            const tokenAccountInfo = await connection.getParsedAccountInfo(ata);
-
+            // 3. Fetch the token account info
+            const tokenAccountInfo = await connection.getAccountInfo(ata);
             let tokenBalance = BigInt(0);
 
-            if (tokenAccountInfo.value && "data" in tokenAccountInfo.value) {
-                const data = tokenAccountInfo.value.data as {
-                    parsed?: {
-                        info?: {
-                            tokenAmount?: {
-                                amount?: string;
-                            };
-                        };
-                    };
-                };
-
-                if (data?.parsed?.info?.tokenAmount?.amount) {
-                    tokenBalance = BigInt(data.parsed.info.tokenAmount.amount);
+            if (tokenAccountInfo) {
+                // Parse account info based on program
+                const tokenAccount = await connection.getParsedAccountInfo(ata);
+                if (tokenAccount.value && "data" in tokenAccount.value) {
+                    const data = tokenAccount.value.data as any;
+                    if (data?.parsed?.info?.tokenAmount?.amount) {
+                        tokenBalance = BigInt(data.parsed.info.tokenAmount.amount);
+                    }
                 }
             }
 

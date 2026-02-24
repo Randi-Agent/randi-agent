@@ -20,7 +20,7 @@ export const TOKEN_MINT = process.env.NEXT_PUBLIC_TOKEN_MINT
     || process.env.TOKEN_MINT
     || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
 
-export const TOKEN_DECIMALS = 9;
+export const TOKEN_DECIMALS = 6;
 export const TOTAL_SUPPLY = 1_000_000_000; // 1B $RANDI
 
 // ─── Burn Schedule ──────────────────────────────────────────────────────────

@@ -174,14 +174,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    response.cookies.set("auth-token", token, {
+    const cookieOptions: any = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 24 * 60 * 60,
       path: "/",
-      domain: ".randi.chat",
-    });
+    };
+
+    // Only set domain in production to avoid issues with localhost
+    if (process.env.NODE_ENV === "production" && !request.nextUrl.hostname.includes("localhost")) {
+      cookieOptions.domain = ".randi.chat";
+    }
+
+    response.cookies.set("auth-token", token, cookieOptions);
 
     return response;
   } catch (error: any) {

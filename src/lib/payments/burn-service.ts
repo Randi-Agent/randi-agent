@@ -104,10 +104,15 @@ export class BurnService {
         const treasury = Keypair.fromSecretKey(bs58.decode(secretKeyStr));
         const mintPubkey = new PublicKey(this.tokenMint);
 
-        const treasuryATA = await getAssociatedTokenAddress(mintPubkey, treasury.publicKey);
+        // Detect token program
+        const mintAccount = await connection.getAccountInfo(mintPubkey);
+        if (!mintAccount) throw new Error("Mint not found");
+        const tokenProgramId = mintAccount.owner;
 
-        // We assume decimals = 9 for $RANDI (standard for Pump.fun tokens usually)
-        const decimals = 9;
+        const treasuryATA = await getAssociatedTokenAddress(mintPubkey, treasury.publicKey, false, tokenProgramId);
+
+        // We assume decimals = 6 for $RANDI
+        const decimals = 6;
 
         const burnIx = createBurnCheckedInstruction(
             treasuryATA,
@@ -116,7 +121,7 @@ export class BurnService {
             amount,
             decimals,
             [],
-            TOKEN_PROGRAM_ID
+            tokenProgramId
         );
 
         const memoIx = new TransactionInstruction({

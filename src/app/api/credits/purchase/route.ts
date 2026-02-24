@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
     // We should probably just use that.
 
     const tokenAmountToTransfer = pkg.tokenAmount; // whole tokens
-    const decimals = Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "9");
+    const decimals = Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "6");
     const tokenAmountBaseUnits = BigInt(tokenAmountToTransfer) * BigInt(10 ** decimals);
 
     const paymentAsset = "spl"; // Force SPL for $RANDI
-    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy";
+    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
     const treasuryWallet = process.env.TREASURY_WALLET || "BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3";
 
     // For deposit, we might still want to burn a bit (e.g. 10% entry burn?) 
