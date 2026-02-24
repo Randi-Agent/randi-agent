@@ -22,10 +22,10 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 ## 💰 Phase 3: Financial & Tokenomics Layer
 **Objective**: Integrate the $RANDI token deeply into the platform's DNA.
 - [x] **On-Chain Verification**: Robust Solana transaction scanning for credit top-ups.
-- [x] **Automated Burn Mechanics**: Real-time $RANDI burning on every agent tool execution. (Batch Burn Protocol Implemented)
-- [ ] **Subscription Tiers**: Managed permissions for "Free" vs "Pro" compute models (e.g., Llama-3-70b vs GPT-4o).
-- [x] **Token-Gating**: Unlock ultra-premium models (o1, Claude 3.5 Sonnet) via $RANDI staking or holding. (Implemented: tier-check API, staking verification, token-gating lib)
-- [ ] **Referral System**: Token-based incentives for user growth.
+- [x] **Automated Burn Mechanics**: Real-time $RANDI burning on every agent call. [View Burn Schedule](/BURN_SCHEDULE.md)
+- [x] **Burn-to-Use 2.0**: Replaced old credit packs with direct $RANDI usage and 70% ignition burn.
+- [x] **Staking Discounts**: 15-50% off agent calls for token stakers.
+- [ ] **Referral System**: Token-based incentives for user growth. (Planned for Phase 2 Growth)
 
 ## 🧠 Phase 4: Advanced Intelligence & UI
 **Objective**: Transform from simple chat to complex agentic workflows.

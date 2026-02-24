@@ -85,7 +85,7 @@ export async function GET() {
         status: c.status,
         url: c.url,
         password: c.password,
-        creditsUsed: c.creditsUsed,
+        tokensUsed: c.tokensUsed,
         expiresAt: c.expiresAt.toISOString(),
         createdAt: c.createdAt.toISOString(),
       })),
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
       const creditsNeeded = hours * agent.creditsPerHour;
 
-      if (user.creditBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
+      if (user.tokenBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
       const resolvedUsername =
         user.username ?? (await ensureUserHasUsername(tx, user.id, user.walletAddress ?? ""));
 
@@ -163,10 +163,10 @@ export async function POST(request: NextRequest) {
 
       await tx.user.update({
         where: { id: auth.userId },
-        data: { creditBalance: { decrement: creditsNeeded } },
+        data: { tokenBalance: { decrement: creditsNeeded } },
       });
 
-      await tx.creditTransaction.create({
+      await tx.tokenTransaction.create({
         data: {
           userId: auth.userId,
           type: "USAGE",
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
           agentId: agent.id,
           subdomain: `temp-${nanoid(10)}`, // temporary, will be updated by provisioner
           status: "PROVISIONING",
-          creditsUsed: creditsNeeded,
+          tokensUsed: creditsNeeded,
           expiresAt,
         },
       });
@@ -262,11 +262,11 @@ export async function POST(request: NextRequest) {
           // Refund credits
           await tx.user.update({
             where: { id: userId! },
-            data: { creditBalance: { increment: creditsReserved } },
+            data: { tokenBalance: { increment: creditsReserved } },
           });
 
           // Record refund
-          await tx.creditTransaction.create({
+          await tx.tokenTransaction.create({
             data: {
               userId: userId!,
               type: "REFUND",

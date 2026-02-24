@@ -8,10 +8,10 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: auth.userId },
-      select: { creditBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
+      select: { tokenBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
     });
 
-    const transactions = (await prisma.creditTransaction.findMany({
+    const transactions = (await prisma.tokenTransaction.findMany({
       where: { userId: auth.userId },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -27,7 +27,7 @@ export async function GET() {
     })).map(t => ({ ...t, createdAt: t.createdAt.toISOString() }));
 
     return NextResponse.json({
-      balance: user?.creditBalance || 0,
+      balance: user?.tokenBalance || 0,
       subscriptionStatus: user?.subscriptionStatus || "none",
       subscriptionExpiresAt: user?.subscriptionExpiresAt?.toISOString() || null,
       transactions,

@@ -48,7 +48,7 @@ export function ContainerCard({ container, onStop }: ContainerCardProps) {
         <span>
           {container.status === "RUNNING"
             ? `${hoursLeft}h ${minutesLeft}m remaining`
-            : `Used ${container.creditsUsed} credits`}
+            : `Used ${container.tokensUsed} credits`}
         </span>
         <div className="flex gap-2">
           <Link

@@ -24,7 +24,7 @@ export class TransactionScanner {
             if (sigInfo.err) continue;
 
             // Check if we've already processed this signature
-            const existing = await prisma.creditTransaction.findUnique({
+            const existing = await prisma.tokenTransaction.findUnique({
                 where: { txSignature: sigInfo.signature },
             });
 
@@ -68,7 +68,7 @@ export class TransactionScanner {
         const userShortId = parts[3];
 
         // Find the pending transaction intent that matches this memo
-        const intent = await prisma.creditTransaction.findFirst({
+        const intent = await prisma.tokenTransaction.findFirst({
             where: {
                 memo,
                 status: "PENDING",
@@ -92,7 +92,7 @@ export class TransactionScanner {
         }
 
         await prisma.$transaction(async (tx) => {
-            await tx.creditTransaction.update({
+            await tx.tokenTransaction.update({
                 where: { id: intent.id },
                 data: {
                     status: "CONFIRMED",
@@ -113,7 +113,7 @@ export class TransactionScanner {
             } else if (intent.type === "PURCHASE") {
                 await tx.user.update({
                     where: { id: intent.userId },
-                    data: { creditBalance: { increment: intent.amount } },
+                    data: { tokenBalance: { increment: intent.amount } },
                 });
             }
         });

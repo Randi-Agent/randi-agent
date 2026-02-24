@@ -1,204 +1,159 @@
 import { prisma } from "@/lib/db/prisma";
+import {
+  getCallCost,
+  toLamports,
+  StakingLevel,
+  getTokenPacks,
+  TokenPack
+} from "@/lib/tokenomics";
 
-export const SUBSCRIPTION_USD = 20;
-export const SUBSCRIPTION_CREDITS = 999_999; // unlimited while active
+export { getTokenPacks };
 
-export interface SubscriptionPlan {
-  id: string;
-  name: string;
-  usdAmount: string;
-  period: string;
-  features: string[];
+/**
+ * Deduct tokens from user balance for an agent call.
+ * This is the primary function for charging users on a per-call basis.
+ */
+export async function deductForAgentCall(
+  userId: string,
+  model: string,
+  description: string,
+  chatSessionId?: string
+): Promise<{ success: boolean; cost?: number; error?: string }> {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Get user and their staking level
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        tokenBalance: true,
+        stakedAmount: true,
+        stakingLevel: true // Cached level, but we can verify it
+      },
+    });
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    // 2. Calculate cost based on model and staking level
+    // Note: In a production app, we'd recalc staking level from stakedAmount 
+    // to be safe, but using the cached stakingLevel is faster for now.
+    const costDetails = getCallCost(model, user.stakingLevel as StakingLevel);
+    const { finalCost } = costDetails;
+
+    // 3. Check if user has enough tokens
+    if (user.tokenBalance < finalCost) {
+      return { success: false, error: "Insufficient $RANDI balance" };
+    }
+
+    // 4. Deduct from user balance
+    await tx.user.update({
+      where: { id: userId },
+      data: { tokenBalance: { decrement: finalCost } },
+    });
+
+    // 5. Update ChatSession (if applicable)
+    if (chatSessionId) {
+      await tx.chatSession.update({
+        where: { id: chatSessionId },
+        data: { tokensUsed: { increment: finalCost } },
+      });
+    }
+
+    // 6. Record transaction for burn processing
+    // amount is stored as negative for USAGE
+    await tx.tokenTransaction.create({
+      data: {
+        userId,
+        type: "USAGE",
+        status: "CONFIRMED",
+        amount: -finalCost,
+        tokenAmount: toLamports(finalCost),
+        description: `[Call] ${model}: ${description}`,
+      },
+    });
+
+    return { success: true, cost: finalCost };
+  });
 }
 
-export interface CreditPackage {
-  id: string;
-  name: string;
-  usdAmount: string;
-  credits: number;
+/**
+ * Handle token deposit (replaces addCredits).
+ * Bonus tokens are awarded based on the token pack.
+ */
+export async function depositTokens(
+  userId: string,
+  packId: string,
+  txSignature: string,
+  baseTokenAmount: bigint,
+  memo: string
+): Promise<void> {
+  const packs = getTokenPacks();
+  const pack = packs.find(p => p.id === packId);
+
+  // Calculate bonus if pack found
+  let bonusMultiplier = 1.0;
+  if (pack) {
+    bonusMultiplier = 1 + (pack.bonusPercent / 100);
+  }
+
+  // Convert BigInt base amount (lamports) to whole tokens for the bonus calc
+  const decimals = 10 ** 9;
+  const wholeTokens = Number(baseTokenAmount / BigInt(decimals));
+  const finalWholeTokens = Math.floor(wholeTokens * bonusMultiplier);
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Claim the pending transaction record
+    const claim = await tx.tokenTransaction.updateMany({
+      where: { memo, userId, status: "PENDING" },
+      data: {
+        status: "CONFIRMED",
+        txSignature,
+        tokenAmount: baseTokenAmount, // record the actual on-chain amount transferred
+        amount: finalWholeTokens,     // record the credited whole tokens (including bonus)
+      },
+    });
+
+    if (claim.count === 0) {
+      // Transaction already processed or invalid
+      return;
+    }
+
+    // 2. Update user balance
+    await tx.user.update({
+      where: { id: userId },
+      data: { tokenBalance: { increment: finalWholeTokens } },
+    });
+  });
 }
 
-export function getSubscriptionPlan(): SubscriptionPlan {
-  return {
-    id: "monthly",
-    name: "Randi Pro",
-    usdAmount: String(SUBSCRIPTION_USD),
-    period: "month",
-    features: [
-      "Unlimited AI agent chats",
-      "All tool integrations",
-      "Priority access to new agents",
-      "1000+ Composio tool integrations",
-    ],
-  };
-}
-
-export function getCreditPackages(): CreditPackage[] {
-  return [
-    {
-      id: "starter",
-      name: "Starter Pack",
-      usdAmount: "10",
-      credits: 100,
-    },
-    {
-      id: "growth",
-      name: "Growth Pack",
-      usdAmount: "50",
-      credits: 600, // 20% bonus
-    },
-    {
-      id: "pro",
-      name: "Pro Pack",
-      usdAmount: "200",
-      credits: 3000, // 50% bonus
-    },
-  ];
-}
-
-export async function getUserSubscription(userId: string) {
+/**
+ * Get user balance and staking info.
+ */
+export async function getUserWalletInfo(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
-      subscriptionStatus: true,
-      subscriptionExpiresAt: true,
-      creditBalance: true,
+      tokenBalance: true,
+      stakedAmount: true,
+      stakingLevel: true,
     },
   });
 
   if (!user) return null;
 
-  const isActive =
-    user.subscriptionStatus === "active" &&
-    user.subscriptionExpiresAt &&
-    new Date(user.subscriptionExpiresAt) > new Date();
-
   return {
-    status: isActive ? "active" as const : user.subscriptionStatus as "none" | "expired",
-    expiresAt: user.subscriptionExpiresAt,
-    creditBalance: user.creditBalance,
+    tokenBalance: user.tokenBalance,
+    stakedAmount: user.stakedAmount,
+    stakingLevel: user.stakingLevel as StakingLevel,
   };
 }
 
-export async function activateSubscription(
-  userId: string,
-  txSignature: string,
-  tokenAmount: bigint,
-  memo: string
-): Promise<void> {
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-  await prisma.$transaction(async (tx) => {
-    // Update/claim the pending transaction
-    const claim = await tx.creditTransaction.updateMany({
-      where: { memo, userId, status: "PENDING" },
-      data: {
-        status: "CONFIRMED",
-        txSignature,
-        tokenAmount,
-      },
-    });
-
-    if (claim.count === 0) {
-      return;
-    }
-
-    // Activate subscription
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        subscriptionStatus: "active",
-        subscriptionExpiresAt: expiresAt,
-      },
-    });
-  });
-}
-
-/** Legacy: still used if credit-based containers exist */
+/** Legacy support: redirects to new logic */
 export async function deductCredits(
   userId: string,
   amount: number,
-  description: string,
-  containerId?: string
+  description: string
 ): Promise<boolean> {
-  return await prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUnique({
-      where: { id: userId },
-      select: { creditBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
-    });
-
-    if (!user) return false;
-
-    // If user has active subscription, always allow
-    const isSubscribed =
-      user.subscriptionStatus === "active" &&
-      user.subscriptionExpiresAt &&
-      new Date(user.subscriptionExpiresAt) > new Date();
-
-    if (isSubscribed) {
-      await tx.creditTransaction.create({
-        data: {
-          userId,
-          type: "USAGE",
-          status: "CONFIRMED",
-          amount: 0,
-          containerId,
-          description: `[Subscription] ${description}`,
-        },
-      });
-      return true;
-    }
-
-    // Fallback to credit-based deduction
-    if (user.creditBalance < amount) {
-      return false;
-    }
-
-    await tx.user.update({
-      where: { id: userId },
-      data: { creditBalance: { decrement: amount } },
-    });
-
-    await tx.creditTransaction.create({
-      data: {
-        userId,
-        type: "USAGE",
-        status: "CONFIRMED",
-        amount: -amount,
-        containerId,
-        description,
-      },
-    });
-
-    return true;
-  });
-}
-
-export async function addCredits(
-  userId: string,
-  amount: number,
-  txSignature: string,
-  tokenAmount: bigint,
-  memo: string
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const claim = await tx.creditTransaction.updateMany({
-      where: { memo, userId, status: "PENDING" },
-      data: {
-        status: "CONFIRMED",
-        txSignature,
-        tokenAmount,
-      },
-    });
-
-    if (claim.count === 0) {
-      return;
-    }
-
-    await tx.user.update({
-      where: { id: userId },
-      data: { creditBalance: { increment: amount } },
-    });
-  });
+  const result = await deductForAgentCall(userId, "llama-3-70b", description);
+  return result.success;
 }

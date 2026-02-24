@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { BURN_BPS } from "@/lib/tokenomics";
 import { connection } from "@/lib/solana/connection";
 import {
     PublicKey,
@@ -19,7 +20,7 @@ export class BurnService {
     private tokenMint: string;
     private burnBps: number;
 
-    constructor(treasuryWallet: string, tokenMint: string, burnBps: number = 1000) {
+    constructor(treasuryWallet: string, tokenMint: string, burnBps: number = BURN_BPS) {
         this.treasuryWallet = treasuryWallet;
         this.tokenMint = tokenMint;
         this.burnBps = burnBps;
@@ -34,10 +35,10 @@ export class BurnService {
         signature?: string
     }> {
         // 1. Find confirmed transactions without a burn signature
-        const pendingTransactions = await prisma.creditTransaction.findMany({
+        const pendingTransactions = await prisma.tokenTransaction.findMany({
             where: {
                 status: "CONFIRMED",
-                type: { in: ["PURCHASE", "SUBSCRIBE"] },
+                type: { in: ["PURCHASE", "USAGE"] },
                 burnTxSignature: null,
                 tokenAmount: { not: null }
             }
@@ -83,7 +84,7 @@ export class BurnService {
 
         // 4. Update transactions as burned
         if (signature) {
-            await prisma.creditTransaction.updateMany({
+            await prisma.tokenTransaction.updateMany({
                 where: { id: { in: pendingTransactions.map(tx => tx.id) } },
                 data: { burnTxSignature: signature }
             });
@@ -145,7 +146,7 @@ export class BurnService {
 export async function runBurnService() {
     const treasury = process.env.TREASURY_WALLET;
     const mint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT;
-    const burnBps = parseInt(process.env.PAYMENT_BURN_BPS || "1000");
+    const burnBps = BURN_BPS;
 
     if (!treasury || !mint) {
         console.warn("Burn service skipped: Missing configuration.");

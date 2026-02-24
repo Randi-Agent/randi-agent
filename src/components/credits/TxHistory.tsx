@@ -1,9 +1,9 @@
 "use client";
 
-import type { CreditTransaction } from "@/types/credits";
+import type { TokenTransaction } from "@/types/credits";
 
 interface TxHistoryProps {
-  transactions: CreditTransaction[];
+  transactions: TokenTransaction[];
 }
 
 export function TxHistory({ transactions }: TxHistoryProps) {

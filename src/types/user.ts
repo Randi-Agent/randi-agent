@@ -2,7 +2,7 @@ export interface User {
   id: string;
   walletAddress: string;
   username: string | null;
-  creditBalance: number;
+  tokenBalance: number;
 }
 
 export interface AuthState {

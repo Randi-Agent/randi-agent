@@ -48,9 +48,9 @@ function parseIntentCreatedAtMs(memo: string): number | null {
 async function getUserBalance(userId: string): Promise<number> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { creditBalance: true },
+    select: { tokenBalance: true },
   });
-  return user?.creditBalance || 0;
+  return user?.tokenBalance || 0;
 }
 
 export async function POST(request: NextRequest) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const { transactionId, txSignature, memo } = parsed.data;
 
     // Check for replay / idempotent replay by tx signature.
-    const existing = await prisma.creditTransaction.findUnique({
+    const existing = await prisma.tokenTransaction.findUnique({
       where: { txSignature },
       select: {
         userId: true,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const intent = await prisma.creditTransaction.findFirst({
+    const intent = await prisma.tokenTransaction.findFirst({
       where: {
         id: transactionId,
         userId: auth.userId,
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     const intentCreatedAtMs = parseIntentCreatedAtMs(intent.memo || memo);
     const intentAgeMs = intentCreatedAtMs ? Date.now() - intentCreatedAtMs : null;
     if (intentAgeMs !== null && intentAgeMs > resolvePurchaseIntentTtlMs()) {
-      await prisma.creditTransaction.updateMany({
+      await prisma.tokenTransaction.updateMany({
         where: { id: intent.id, status: "PENDING" },
         data: { status: "EXPIRED" },
       });
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!intent.tokenAmount) {
-      await prisma.creditTransaction.updateMany({
+      await prisma.tokenTransaction.updateMany({
         where: { id: intent.id, status: "PENDING" },
         data: { status: "FAILED" },
       });
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await prisma.$transaction(async (tx) => {
-        const claimResult = await tx.creditTransaction.updateMany({
+        const claimResult = await tx.tokenTransaction.updateMany({
           where: {
             id: intent.id,
             userId: auth.userId,
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (claimResult.count === 0) {
-          const existingIntent = await tx.creditTransaction.findUnique({
+          const existingIntent = await tx.tokenTransaction.findUnique({
             where: { id: intent.id },
             select: { status: true, txSignature: true },
           });
@@ -248,9 +248,9 @@ export async function POST(request: NextRequest) {
             idempotent = true;
             const user = await tx.user.findUnique({
               where: { id: auth.userId },
-              select: { creditBalance: true },
+              select: { tokenBalance: true },
             });
-            newBalance = user?.creditBalance || 0;
+            newBalance = user?.tokenBalance || 0;
             creditsAdded = 0;
             return;
           }
@@ -269,17 +269,17 @@ export async function POST(request: NextRequest) {
               subscriptionExpiresAt: expiresAt,
               tier: "PRO",
             },
-            select: { creditBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
+            select: { tokenBalance: true, subscriptionStatus: true, subscriptionExpiresAt: true },
           });
-          newBalance = user.creditBalance;
+          newBalance = user.tokenBalance;
           creditsAdded = 0;
         } else {
           const user = await tx.user.update({
             where: { id: auth.userId },
-            data: { creditBalance: { increment: intent.amount } },
-            select: { creditBalance: true },
+            data: { tokenBalance: { increment: intent.amount } },
+            select: { tokenBalance: true },
           });
-          newBalance = user.creditBalance;
+          newBalance = user.tokenBalance;
           creditsAdded = intent.amount;
         }
       });

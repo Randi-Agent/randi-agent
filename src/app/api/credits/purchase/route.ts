@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthError, requireAuth, handleAuthError } from "@/lib/auth/middleware";
-import { SUBSCRIPTION_USD, getSubscriptionPlan, getCreditPackages, CreditPackage } from "@/lib/credits/engine";
+import { getTokenPacks } from "@/lib/credits/engine";
 import { prisma } from "@/lib/db/prisma";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
 import {
@@ -12,10 +12,7 @@ import {
 } from "@/lib/payments/token-pricing";
 
 const schema = z.object({
-  planId: z.string().optional(),
-  packageId: z.string().optional(),
-}).refine(data => data.planId || data.packageId, {
-  message: "Either planId or packageId must be provided",
+  packageId: z.string(),
 });
 
 const DEFAULT_PURCHASE_INTENT_TTL_MS = 15 * 60 * 1000;
@@ -49,80 +46,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { planId, packageId } = parsed.data;
-    let item: { name: string; usdAmount: string; credits?: number; type: "SUBSCRIBE" | "PURCHASE" };
+    const { packageId } = parsed.data;
 
-    if (planId === "monthly") {
-      const plan = getSubscriptionPlan();
-      item = { ...plan, type: "SUBSCRIBE" };
-    } else if (packageId) {
-      const pkg = getCreditPackages().find((p: CreditPackage) => p.id === packageId);
-      if (!pkg) {
-        return NextResponse.json({ error: "Invalid package ID" }, { status: 400 });
-      }
-      item = { ...pkg, type: "PURCHASE" };
-    } else {
-      return NextResponse.json({ error: "Invalid purchase request" }, { status: 400 });
+    // 1. Find the pack
+    const packs = getTokenPacks();
+    const pkg = packs.find(p => p.id === packageId);
+
+    if (!pkg) {
+      return NextResponse.json({ error: "Invalid package ID" }, { status: 400 });
     }
 
-    const paymentAsset = resolvePaymentAsset();
-    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "Randi8oX9z123456789012345678901234567890";
-    const priceQuoteMint = paymentAsset === "sol"
-      ? process.env.SOL_PRICE_MINT?.trim() || WSOL_MINT
-      : tokenMint!;
+    // 2. Resolve pricing
+    // Although we want "No USD abstraction", for the initial purchase 
+    // we still need to calculate how many tokens to send if we don't have a fixed price yet.
+    // However, the TokenPack has a fixed tokenAmount. 
+    // We should probably just use that.
+
+    const tokenAmountToTransfer = pkg.tokenAmount; // whole tokens
+    const decimals = Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "9");
+    const tokenAmountBaseUnits = BigInt(tokenAmountToTransfer) * BigInt(10 ** decimals);
+
+    const paymentAsset = "spl"; // Force SPL for $RANDI
+    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy";
     const treasuryWallet = process.env.TREASURY_WALLET || "BFnVSDKbTfe7tRPB8QqmxcXZjzkSxwBMH34HdnbStbQ3";
-    const decimals = paymentAsset === "sol" ? 9 : Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "9");
-    const solBurnWallet = resolveSolBurnWallet();
 
-    if (!treasuryWallet) {
-      return NextResponse.json(
-        { error: "Payment configuration is missing treasury wallet" },
-        { status: 500 }
-      );
-    }
+    // For deposit, we might still want to burn a bit (e.g. 10% entry burn?) 
+    // but the user's vision says 70% burn on USAGE. 
+    // For deposit, let's keep it simple: 100% to treasury (no entry burn).
+    const split = {
+      treasuryTokenAmount: tokenAmountBaseUnits,
+      burnTokenAmount: BigInt(0),
+      burnBps: 0
+    };
 
-    const quote = await quoteTokenAmountForUsd({
-      usdAmount: item.usdAmount,
-      tokenMint: priceQuoteMint,
-      tokenDecimals: decimals,
-    });
-
-    const split = splitTokenAmountsByBurn(quote.tokenAmountBaseUnits);
-    const memo = `ap:${item.type.toLowerCase()}:${Date.now()}:${auth.userId.slice(-6)}:b${split.burnBps}`;
+    const memo = `ap:deposit:${Date.now()}:${auth.userId.slice(-6)}`;
     const intentExpiresAt = new Date(Date.now() + resolvePurchaseIntentTtlMs());
 
-    const tx = await prisma.creditTransaction.create({
+    // 3. Create pending transaction
+    const tx = await prisma.tokenTransaction.create({
       data: {
         userId: auth.userId,
-        type: item.type,
+        type: "PURCHASE",
         status: "PENDING",
-        amount: item.credits || 0,
-        tokenAmount: quote.tokenAmountBaseUnits,
+        amount: pkg.tokenAmount, // Base tokens (bonus added on confirmed)
+        tokenAmount: tokenAmountBaseUnits,
         memo,
-        description: item.type === "SUBSCRIBE"
-          ? `Subscribe to ${item.name} ($${item.usdAmount}/month)`
-          : `Purchase ${item.credits} Credits ($${item.usdAmount})`,
+        description: `Deposit ${pkg.tokenAmount.toLocaleString()} $RANDI (${pkg.name} Pack)`,
       },
     });
 
     return NextResponse.json({
       transactionId: tx.id,
       paymentAsset,
-      tokenMint: paymentAsset === "spl" ? tokenMint : null,
+      tokenMint,
       treasuryWallet,
-      burnWallet: paymentAsset === "sol" ? solBurnWallet : null,
+      burnWallet: null,
       tokenAmount: split.treasuryTokenAmount.toString(),
       burnAmount: split.burnTokenAmount.toString(),
-      grossTokenAmount: quote.tokenAmountBaseUnits.toString(),
+      grossTokenAmount: tokenAmountBaseUnits.toString(),
       memo,
       decimals,
       quote: {
-        itemUsd: item.usdAmount,
-        itemName: item.name,
-        tokenUsdPrice: quote.tokenUsdPrice,
-        tokenAmountDisplay: quote.tokenAmountDisplay,
-        source: quote.source,
-        burnBps: split.burnBps,
+        itemUsd: "0", // Not used anymore
+        itemName: pkg.name,
+        tokenUsdPrice: "0",
+        tokenAmountDisplay: pkg.tokenAmount.toLocaleString(),
+        source: "fixed",
+        burnBps: 0,
       },
       intentExpiresAt: intentExpiresAt.toISOString(),
     });

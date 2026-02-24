@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { CreditTransaction } from "@/types/credits";
+import type { TokenTransaction } from "@/types/credits";
 import { fetchApi } from "@/lib/utils/api";
 
 const VERIFY_RETRYABLE_STATUS = new Set([503]);
@@ -25,7 +25,7 @@ export function useCredits() {
     status: "none",
     expiresAt: null,
   });
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
+  const [transactions, setTransactions] = useState<TokenTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

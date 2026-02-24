@@ -15,7 +15,7 @@ export interface ContainerInfo {
   status: ContainerStatus;
   url: string | null;
   password: string | null;
-  creditsUsed: number;
+  tokensUsed: number;
   expiresAt: string;
   createdAt: string;
 }

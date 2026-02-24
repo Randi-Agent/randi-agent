@@ -16,7 +16,7 @@ export function useTokenPrice() {
         symbol: "RANDI",
         priceUsd: null,
         marketCap: null,
-        burnPercent: 10,
+        burnPercent: 70,
     });
     const [loading, setLoading] = useState(true);
 

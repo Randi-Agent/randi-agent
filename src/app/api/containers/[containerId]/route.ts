@@ -13,7 +13,7 @@ export async function GET(
 
     const container = await prisma.container.findUnique({
       where: { id: containerId },
-      include: { agent: { select: { name: true, slug: true, creditsPerHour: true } } },
+      include: { agent: { select: { name: true, slug: true, tokensPerHour: true } } },
     });
 
     if (!container || container.userId !== auth.userId) {
@@ -29,7 +29,7 @@ export async function GET(
       status: container.status,
       url: container.url,
       password: container.password,
-      creditsUsed: container.creditsUsed,
+      tokensUsed: container.tokensUsed,
       expiresAt: container.expiresAt.toISOString(),
       createdAt: container.createdAt.toISOString(),
     });

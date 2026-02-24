@@ -4,20 +4,19 @@ import { useState, useEffect } from "react";
 import { useCredits } from "@/hooks/useCredits";
 import { useTokenPrice } from "@/hooks/useTokenPrice";
 import { useSPLTransfer } from "@/hooks/useSPLTransfer";
-import { SubscriptionPlan, CreditPackage } from "@/lib/credits/engine";
+import { TokenPack } from "@/lib/tokenomics";
 
 type Step = "plan" | "paying" | "verifying" | "done" | "error";
 
 export function PurchaseForm() {
-  const { initiateSubscription, purchasePackage, verifyPurchase, isSubscribed, subscription } = useCredits();
-  const { priceUsd, usdToRandi, formatRandi, loading: priceLoading } = useTokenPrice();
+  const { verifyPurchase, isSubscribed, subscription } = useCredits();
+  const { priceUsd, formatRandi, loading: priceLoading } = useTokenPrice();
   const { transfer, sending: walletBusy } = useSPLTransfer();
 
   const [step, setStep] = useState<Step>("plan");
   const [error, setError] = useState<string | null>(null);
-  const [availablePlan, setAvailablePlan] = useState<SubscriptionPlan | null>(null);
-  const [availablePackages, setAvailablePackages] = useState<CreditPackage[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState<string>("monthly");
+  const [availablePackages, setAvailablePackages] = useState<TokenPack[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string>("builder");
   const [loadingPackages, setLoadingPackages] = useState(true);
 
   useEffect(() => {
@@ -25,7 +24,6 @@ export function PurchaseForm() {
       try {
         const res = await fetch("/api/credits/packages");
         const data = await res.json();
-        setAvailablePlan(data.plan);
         setAvailablePackages(data.packages || []);
       } catch (err) {
         console.error("Failed to fetch packages:", err);
@@ -36,14 +34,14 @@ export function PurchaseForm() {
     fetchPackages();
   }, []);
 
-  const selectedItem = selectedItemId === "monthly"
-    ? availablePlan
-    : availablePackages.find(p => p.id === selectedItemId);
+  const selectedItem = availablePackages.find(p => p.id === selectedItemId);
 
-  const usdAmount = selectedItem ? Number(selectedItem.usdAmount) : 0;
-  const randiAmount = usdToRandi(usdAmount);
-  const burnAmount = randiAmount ? randiAmount * 0.1 : null;
-  const treasuryAmount = randiAmount ? randiAmount * 0.9 : null;
+  const tokenAmount = selectedItem ? selectedItem.tokenAmount : 0;
+  const bonusTokens = selectedItem ? Math.floor(tokenAmount * (selectedItem.bonusPercent / 100)) : 0;
+  const totalTokens = tokenAmount + bonusTokens;
+
+  // Burn calculation (70% on use, but here we show protocol-wide burn for transparency)
+  const estimatedBurn = Math.floor(totalTokens * 0.7);
 
   const handlePurchase = async () => {
     if (!selectedItem) return;
@@ -52,9 +50,18 @@ export function PurchaseForm() {
       setError(null);
       setStep("paying");
 
-      const intent = selectedItemId === "monthly"
-        ? await initiateSubscription()
-        : await purchasePackage(selectedItemId);
+      const res = await fetch("/api/credits/purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: selectedItemId }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to initiate purchase");
+      }
+
+      const intent = await res.json();
 
       const txSignature = await transfer({
         recipient: intent.treasuryWallet,
@@ -78,37 +85,6 @@ export function PurchaseForm() {
     }
   };
 
-  if (isSubscribed) {
-    const expiresDate = subscription.expiresAt
-      ? new Date(subscription.expiresAt).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-      : "Unknown";
-
-    return (
-      <div className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-success/10 rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">Randi Pro — Active</h3>
-            <p className="text-xs text-muted-foreground">Renews {expiresDate}</p>
-          </div>
-        </div>
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <p>✓ Unlimited AI agent chats</p>
-          <p>✓ All tool integrations</p>
-          <p>✓ 1000+ Composio tools</p>
-        </div>
-      </div>
-    );
-  }
-
   if (step === "done") {
     return (
       <div className="bg-card border border-success/30 rounded-xl p-6 text-center">
@@ -117,8 +93,8 @@ export function PurchaseForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="text-xl font-bold mb-2">Purchase Successful!</h3>
-        <p className="text-muted-foreground">Your account has been updated with the new credits or subscription.</p>
+        <h3 className="text-xl font-bold mb-2">Deposit Successful!</h3>
+        <p className="text-muted-foreground">Your $RANDI balance has been updated. Happy agenting!</p>
       </div>
     );
   }
@@ -126,58 +102,49 @@ export function PurchaseForm() {
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="p-6">
-        <h3 className="text-xl font-bold mb-4">Upgrade Your Access</h3>
+        <h3 className="text-xl font-bold mb-4">Deposit $RANDI</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Fund your account to use AI agents. 70% of every call is burned 🔥
+        </p>
 
         {loadingPackages ? (
           <div className="py-8 text-center text-muted-foreground animate-pulse">
-            Loading options...
+            Loading token packs...
           </div>
         ) : (
           <div className="space-y-3 mb-6">
-            {availablePlan && (
-              <button
-                onClick={() => setSelectedItemId(availablePlan.id)}
-                className={`w-full p-4 rounded-xl border text-left transition-all ${selectedItemId === availablePlan.id
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-muted/30 hover:bg-muted/50"
-                  }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-primary mb-1 block">Best Value</span>
-                    <h4 className="font-bold">{availablePlan.name}</h4>
-                    <p className="text-xs text-muted-foreground">Unlimited chats + all toolkits</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-lg">${availablePlan.usdAmount}</div>
-                    <div className="text-[10px] text-muted-foreground">per month</div>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            <div className="flex items-center gap-2 my-4">
-              <div className="h-[1px] flex-1 bg-border" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Credit Packs</span>
-              <div className="h-[1px] flex-1 bg-border" />
-            </div>
-
-            <div className="grid grid-cols-1 gap-2">
+            <div className="grid grid-cols-1 gap-3">
               {availablePackages.map((pkg) => (
                 <button
                   key={pkg.id}
                   onClick={() => setSelectedItemId(pkg.id)}
-                  className={`p-3 rounded-xl border text-left transition-all ${selectedItemId === pkg.id
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border bg-muted/30 hover:bg-muted/50"
+                  className={`p-4 rounded-xl border text-left transition-all ${selectedItemId === pkg.id
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "border-border bg-muted/30 hover:bg-muted/50"
                     }`}
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <h4 className="font-bold text-sm">{pkg.name}</h4>
-                      <p className="text-[10px] text-muted-foreground">{pkg.credits} Credits</p>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold">{pkg.name}</h4>
+                        {pkg.bonusPercent > 0 && (
+                          <span className="bg-success/20 text-success text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            +{pkg.bonusPercent}% BONUS
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        ~{pkg.estimatedStandardCalls} Standard / ~{pkg.estimatedPremiumCalls} Premium calls
+                      </p>
                     </div>
-                    <div className="font-bold text-primary">${pkg.usdAmount}</div>
+                    <div className="text-right">
+                      <div className="font-bold text-primary">{pkg.tokenAmount.toLocaleString()} $RANDI</div>
+                      {priceUsd && (
+                        <div className="text-[10px] text-muted-foreground text-opacity-60">
+                          ≈ ${(pkg.tokenAmount * priceUsd).toFixed(2)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </button>
               ))}
@@ -185,36 +152,27 @@ export function PurchaseForm() {
           </div>
         )}
 
-        <p className="text-[10px] text-muted-foreground mb-4">
-          Paid in RANDI tokens
-          {priceUsd && (
-            <span className="ml-1">
-              (1 RANDI ≈ ${priceUsd.toFixed(8)})
-            </span>
-          )}
-        </p>
-
-        {/* Token Breakdown */}
-        {randiAmount !== null && (
-          <div className="rounded-lg bg-black/20 border border-white/5 p-3 mb-4 text-[10px] space-y-1">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total RANDI</span>
-              <span className="font-mono">{formatRandi(randiAmount)}</span>
+        {/* Burn Transparency */}
+        {selectedItem && (
+          <div className="rounded-lg bg-orange-500/5 border border-orange-500/20 p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2 text-orange-400">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.5-7 3 3 3.5 1.354 3.5 5.5s-.354 3.5-5.5 3.5c0 2 2.5 2 2.5 2z" />
+              </svg>
+              <span className="text-xs font-bold uppercase tracking-wider">Burn Flywheel</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">To Treasury (90%)</span>
-              <span className="font-mono">{formatRandi(treasuryAmount)}</span>
+            <p className="text-[11px] text-muted-foreground mb-2">
+              By depositing, you're fueling the $RANDI deflationary cycle. Using these tokens will burn approximately
+              <span className="text-orange-400 font-bold mx-1">{estimatedBurn.toLocaleString()} $RANDI</span>
+              permanently.
+            </p>
+            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+              <div className="bg-orange-500 h-full w-[70%]" />
             </div>
-            <div className="flex justify-between text-orange-400">
-              <span>Burned 🔥 (10%)</span>
-              <span className="font-mono">{formatRandi(burnAmount)}</span>
+            <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
+              <span>Usage Burn (70%)</span>
+              <span>Treasury (30%)</span>
             </div>
-          </div>
-        )}
-
-        {priceLoading && !randiAmount && (
-          <div className="rounded-lg bg-muted/50 border border-border p-3 mb-4 text-[10px] text-center text-muted-foreground">
-            Loading RANDI price...
           </div>
         )}
       </div>
@@ -236,16 +194,8 @@ export function PurchaseForm() {
             ? "Confirm in wallet..."
             : step === "verifying"
               ? "Verifying on-chain..."
-              : step === "error"
-                ? "Try Again"
-                : `Buy ${selectedItem?.name} — $${selectedItem?.usdAmount}`}
+              : `Deposit ${totalTokens.toLocaleString()} $RANDI`}
         </button>
-
-        {walletBusy && step === "plan" && (
-          <p className="text-[10px] text-muted-foreground mt-2 text-center">
-            Connect a wallet to continue
-          </p>
-        )}
       </div>
     </div>
   );

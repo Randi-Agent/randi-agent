@@ -135,8 +135,8 @@ export default function ContainerDetailPage() {
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Credits Used</p>
-            <p className="text-sm font-medium">{container.creditsUsed}</p>
+            <p className="text-xs text-muted-foreground">$RANDI Used</p>
+            <p className="text-sm font-medium">{container.tokensUsed}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Created</p>

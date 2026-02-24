@@ -16,7 +16,7 @@ export async function GET() {
       id: true,
       walletAddress: true,
       username: true,
-      creditBalance: true,
+      tokenBalance: true,
       tier: true,
     },
   });
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest) {
       id: true,
       walletAddress: true,
       username: true,
-      creditBalance: true,
+      tokenBalance: true,
     },
   });
 

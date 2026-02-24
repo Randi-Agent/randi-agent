@@ -29,7 +29,7 @@ export interface PurchaseInitResponse {
   };
 }
 
-export interface CreditTransaction {
+export interface TokenTransaction {
   id: string;
   type: TransactionType;
   status: TransactionStatus;

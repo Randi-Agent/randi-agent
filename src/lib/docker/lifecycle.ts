@@ -30,7 +30,7 @@ export async function stopContainer(containerId: string): Promise<void> {
   const totalMs = container.expiresAt.getTime() - container.createdAt.getTime();
   const usedMs = now.getTime() - container.createdAt.getTime();
   const unusedRatio = Math.max(0, (totalMs - usedMs) / totalMs);
-  const refundCredits = Math.floor(container.creditsUsed * unusedRatio);
+  const refundCredits = Math.floor(container.tokensUsed * unusedRatio);
 
   await prisma.$transaction(async (tx) => {
     await tx.container.update({
@@ -41,10 +41,10 @@ export async function stopContainer(containerId: string): Promise<void> {
     if (refundCredits > 0) {
       await tx.user.update({
         where: { id: container.userId },
-        data: { creditBalance: { increment: refundCredits } },
+        data: { tokenBalance: { increment: refundCredits } },
       });
 
-      await tx.creditTransaction.create({
+      await tx.tokenTransaction.create({
         data: {
           userId: container.userId,
           type: "REFUND",
@@ -72,7 +72,7 @@ export async function extendContainer(
     if (container.status !== "RUNNING") throw new Error("Container not running");
 
     const creditsNeeded = additionalHours * container.agent.creditsPerHour;
-    if (container.user.creditBalance < creditsNeeded) {
+    if (container.user.tokenBalance < creditsNeeded) {
       throw new Error("Insufficient credits");
     }
 
@@ -84,16 +84,16 @@ export async function extendContainer(
       where: { id: containerId },
       data: {
         expiresAt: newExpiresAt,
-        creditsUsed: { increment: creditsNeeded },
+        tokensUsed: { increment: creditsNeeded },
       },
     });
 
     await tx.user.update({
       where: { id: container.userId },
-      data: { creditBalance: { decrement: creditsNeeded } },
+      data: { tokenBalance: { decrement: creditsNeeded } },
     });
 
-    await tx.creditTransaction.create({
+    await tx.tokenTransaction.create({
       data: {
         userId: container.userId,
         type: "USAGE",

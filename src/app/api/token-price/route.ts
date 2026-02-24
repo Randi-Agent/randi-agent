@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getTokenPacks } from "@/lib/tokenomics";
 import { getTokenUsdPrice } from "@/lib/payments/token-pricing";
 import { connection } from "@/lib/solana/connection";
 import { PublicKey } from "@solana/web3.js";
@@ -14,7 +15,7 @@ function roundUpTo1K(value: number): number {
 
 export async function GET() {
     try {
-        const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "Randi8oX9z123456789012345678901234567890";
+        const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
 
         // Fetch actual token supply from Solana blockchain
         let tokenSupply = 0;
@@ -36,7 +37,7 @@ export async function GET() {
                 symbol: "RANDI",
                 priceUsd: Number(cachedPrice.usd),
                 marketCap: roundUpTo1K(marketCap),
-                burnPercent: 10,
+                burnPercent: 70,
                 cachedAt: cachedPrice.timestamp,
             });
         }
@@ -52,7 +53,7 @@ export async function GET() {
                 symbol: "RANDI",
                 priceUsd: priceNum,
                 marketCap: roundUpTo1K(marketCap),
-                burnPercent: 10,
+                burnPercent: 70,
                 cachedAt: now,
             });
         }
@@ -62,7 +63,7 @@ export async function GET() {
             symbol: "RANDI",
             priceUsd: priceNum,
             marketCap: null,
-            burnPercent: 10,
+            burnPercent: 70,
             cachedAt: now,
         });
     } catch (error) {
@@ -72,7 +73,7 @@ export async function GET() {
                 symbol: "RANDI",
                 priceUsd: null,
                 marketCap: null,
-                burnPercent: 10,
+                burnPercent: 70,
                 error: "Price unavailable",
             },
             { status: 503 }

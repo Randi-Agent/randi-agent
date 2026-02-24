@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
     try {
-        const transactions = await prisma.creditTransaction.findMany({
+        const transactions = await prisma.tokenTransaction.findMany({
             where: {
                 status: "CONFIRMED",
                 type: "PURCHASE",

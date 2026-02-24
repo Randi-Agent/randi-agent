@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       walletAddress: user.walletAddress,
       username,
-      creditBalance: user.creditBalance,
+      tokenBalance: user.tokenBalance,
     },
   });
 
