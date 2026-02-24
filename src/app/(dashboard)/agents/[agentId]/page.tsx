@@ -25,7 +25,7 @@ export default function AgentDetailPage() {
         );
         setAgent(found || null);
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [params.agentId]);
 
@@ -48,7 +48,7 @@ export default function AgentDetailPage() {
             <p className="text-muted-foreground mt-1">{agent.description}</p>
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-primary/10 text-primary">
-            {agent.creditsPerHour} credits/hr
+            {agent.tokensPerHour} tokens/hr
           </span>
         </div>
 

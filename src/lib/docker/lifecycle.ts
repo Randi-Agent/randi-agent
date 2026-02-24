@@ -30,7 +30,7 @@ export async function stopContainer(containerId: string): Promise<void> {
   const totalMs = container.expiresAt.getTime() - container.createdAt.getTime();
   const usedMs = now.getTime() - container.createdAt.getTime();
   const unusedRatio = Math.max(0, (totalMs - usedMs) / totalMs);
-  const refundCredits = Math.floor(container.tokensUsed * unusedRatio);
+  const refundTokens = Math.floor(container.tokensUsed * unusedRatio);
 
   await prisma.$transaction(async (tx) => {
     await tx.container.update({
@@ -38,10 +38,10 @@ export async function stopContainer(containerId: string): Promise<void> {
       data: { status: "STOPPED", stoppedAt: now },
     });
 
-    if (refundCredits > 0) {
+    if (refundTokens > 0) {
       await tx.user.update({
         where: { id: container.userId },
-        data: { tokenBalance: { increment: refundCredits } },
+        data: { tokenBalance: { increment: refundTokens } },
       });
 
       await tx.tokenTransaction.create({
@@ -49,7 +49,7 @@ export async function stopContainer(containerId: string): Promise<void> {
           userId: container.userId,
           type: "REFUND",
           status: "CONFIRMED",
-          amount: refundCredits,
+          amount: refundTokens,
           containerId: container.id,
           description: `Refund for early stop of ${container.subdomain}`,
         },
@@ -61,7 +61,7 @@ export async function stopContainer(containerId: string): Promise<void> {
 export async function extendContainer(
   containerId: string,
   additionalHours: number
-): Promise<{ newExpiresAt: Date; creditsCharged: number }> {
+): Promise<{ newExpiresAt: Date; tokensCharged: number }> {
   return await prisma.$transaction(async (tx) => {
     const container = await tx.container.findUnique({
       where: { id: containerId },
@@ -71,9 +71,9 @@ export async function extendContainer(
     if (!container) throw new Error("Container not found");
     if (container.status !== "RUNNING") throw new Error("Container not running");
 
-    const creditsNeeded = additionalHours * container.agent.creditsPerHour;
-    if (container.user.tokenBalance < creditsNeeded) {
-      throw new Error("Insufficient credits");
+    const tokensNeeded = additionalHours * container.agent.tokensPerHour;
+    if (container.user.tokenBalance < tokensNeeded) {
+      throw new Error("Insufficient tokens");
     }
 
     const newExpiresAt = new Date(
@@ -84,13 +84,13 @@ export async function extendContainer(
       where: { id: containerId },
       data: {
         expiresAt: newExpiresAt,
-        tokensUsed: { increment: creditsNeeded },
+        tokensUsed: { increment: tokensNeeded },
       },
     });
 
     await tx.user.update({
       where: { id: container.userId },
-      data: { tokenBalance: { decrement: creditsNeeded } },
+      data: { tokenBalance: { decrement: tokensNeeded } },
     });
 
     await tx.tokenTransaction.create({
@@ -98,13 +98,13 @@ export async function extendContainer(
         userId: container.userId,
         type: "USAGE",
         status: "CONFIRMED",
-        amount: -creditsNeeded,
+        amount: -tokensNeeded,
         containerId: container.id,
         description: `Extended ${container.subdomain} by ${additionalHours}h`,
       },
     });
 
-    return { newExpiresAt, creditsCharged: creditsNeeded };
+    return { newExpiresAt, tokensCharged: tokensNeeded };
   });
 }
 

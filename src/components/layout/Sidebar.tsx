@@ -90,10 +90,10 @@ export function Sidebar() {
             </>
           )}
         </div>
-        {/* Credit Balance */}
+        {/* Token Balance */}
         <div className="px-3 py-2 bg-muted/50 rounded-lg">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">On-Demand Credits</p>
-          <p className="text-sm font-bold text-primary">{balance.toLocaleString()} CR</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">On-Demand Tokens</p>
+          <p className="text-sm font-bold text-primary">{balance.toLocaleString()} TK</p>
         </div>
         {/* RANDI Price */}
         {priceUsd !== null && (

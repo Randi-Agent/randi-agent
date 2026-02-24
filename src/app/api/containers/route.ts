@@ -70,7 +70,7 @@ export async function GET() {
 
     const containers = await prisma.container.findMany({
       where: { userId: auth.userId },
-      include: { agent: { select: { name: true, slug: true, creditsPerHour: true } } },
+      include: { agent: { select: { name: true, slug: true, tokensPerHour: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const creditsNeeded = hours * agent.creditsPerHour;
+      const creditsNeeded = hours * agent.tokensPerHour;
 
       if (user.tokenBalance < creditsNeeded) throw new Error("INSUFFICIENT_CREDITS");
       const resolvedUsername =

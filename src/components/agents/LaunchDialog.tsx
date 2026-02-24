@@ -22,8 +22,8 @@ export function LaunchDialog({
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const totalCredits = hours * agent.creditsPerHour;
-  const canAfford = balance >= totalCredits;
+  const totalTokens = hours * agent.tokensPerHour;
+  const canAfford = balance >= totalTokens;
 
   const handleLaunch = async () => {
     setLaunching(true);
@@ -54,11 +54,10 @@ export function LaunchDialog({
                 <button
                   key={h}
                   onClick={() => setHours(h)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    hours === h
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${hours === h
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-foreground hover:bg-border"
-                  }`}
+                    }`}
                 >
                   {h}h
                 </button>
@@ -69,7 +68,7 @@ export function LaunchDialog({
           <div className="bg-muted rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Rate</span>
-              <span>{agent.creditsPerHour} credits/hr</span>
+              <span>{agent.tokensPerHour} tokens/hr</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Duration</span>
@@ -78,12 +77,12 @@ export function LaunchDialog({
             <div className="border-t border-border pt-2 flex justify-between font-medium">
               <span>Total</span>
               <span className={canAfford ? "" : "text-destructive"}>
-                {totalCredits} credits
+                {totalTokens} tokens
               </span>
             </div>
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Your balance</span>
-              <span>{balance} credits</span>
+              <span>{balance} tokens</span>
             </div>
           </div>
 
