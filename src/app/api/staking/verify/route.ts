@@ -83,10 +83,12 @@ export async function POST(req: NextRequest) {
             const newStakingLevel = getStakingLevel(tokenBalance);
 
             // Update the user's staking info
-            const updatedUser = await prisma.user.update({
+            const stakedAmountWhole = Number(tokenBalance / BigInt(10 ** RANDI_TOKEN_DECIMALS));
+
+            await prisma.user.update({
                 where: { id: auth.userId },
                 data: {
-                    stakedAmount: tokenBalance,
+                    stakedAmount: stakedAmountWhole,
                     stakingLevel: newStakingLevel,
                     unstakedAt: null, // Clear unstake status if they have holdings
                 },
