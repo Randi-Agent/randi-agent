@@ -50,10 +50,15 @@ export async function GET(request: NextRequest) {
                         commitment: "confirmed",
                     });
                     const logMessages = tx?.meta?.logMessages || [];
-                    const memoLog = logMessages.find((log) => log.includes("Memo"));
-                    if (memoLog) {
-                        const memoMatch = memoLog.match(/\[(.*?)\]/);
-                        memo = memoMatch ? memoMatch[1] : `RAW: ${memoLog.slice(0, 100)}`;
+                    for (const log of logMessages) {
+                        const quotedMatch = log.match(/Memo \(len \d+\): "(.+)"/);
+                        if (quotedMatch) { memo = quotedMatch[1]; break; }
+                        const unquotedMatch = log.match(/Memo \(len \d+\): (.+)/);
+                        if (unquotedMatch) { memo = unquotedMatch[1]; break; }
+                    }
+                    if (!memo) {
+                        const rawMemoLog = logMessages.find((log) => log.includes("Memo"));
+                        if (rawMemoLog) memo = `RAW: ${rawMemoLog.slice(0, 150)}`;
                     }
                 } catch {}
             }

@@ -50,13 +50,24 @@ export class TransactionScanner {
         signature: string
     ): Promise<boolean> {
         const logMessages = tx.meta?.logMessages || [];
-        const memoLog = logMessages.find((log) => log.includes("Memo"));
 
-        if (!memoLog) return false;
-
-        // Extract memo content - typically looks like "Program Memo... log: [ap:subscribe:...]"
-        const memoMatch = memoLog.match(/\[(.*?)\]/);
-        const memo = memoMatch ? memoMatch[1] : null;
+        // Find the actual memo data line: 'Program log: Memo (len N): "ap:deposit:..."'
+        // NOT the invoke line: 'Program MemoSq4... invoke [1]'
+        let memo: string | null = null;
+        for (const log of logMessages) {
+            // Match: Program log: Memo (len N): "content"
+            const quotedMatch = log.match(/Memo \(len \d+\): "(.+)"/);
+            if (quotedMatch) {
+                memo = quotedMatch[1];
+                break;
+            }
+            // Fallback: Program log: Memo (len N): content (without quotes)
+            const unquotedMatch = log.match(/Memo \(len \d+\): (.+)/);
+            if (unquotedMatch) {
+                memo = unquotedMatch[1];
+                break;
+            }
+        }
 
         if (!memo || !memo.startsWith("ap:")) return false;
 
