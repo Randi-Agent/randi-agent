@@ -54,7 +54,7 @@ export async function GET() {
             const mintKey = new PublicKey(TOKEN_MINT);
             const burnKey = new PublicKey(BURN_WALLET);
 
-            const burnATA = await getAssociatedTokenAddress(mintKey, burnKey, false);
+            const burnATA = await getAssociatedTokenAddress(mintKey, burnKey, true);
             const account = await getAccount(connection, burnATA);
             chainBurned = account.amount;
             if (chainBurned === BigInt(0)) {
