@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     const split = splitTokenAmountsByBurn(expectedTokenAmount, burnBps);
     const paymentAsset = resolvePaymentAsset();
 
-    const treasuryWallet = process.env.TREASURY_WALLET;
+    const treasuryWallet = process.env.TREASURY_WALLET || "2Hnkz9D72u7xcoA18tMdFLSRanAkj4eWcGB7iFH296N7";
     if (!treasuryWallet) {
       return NextResponse.json(
         { error: "Payment verification is missing treasury wallet config" },
