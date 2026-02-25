@@ -197,7 +197,7 @@ export async function getTokenUsdPrice(mint: string): Promise<{
  */
 export function splitTokenAmountsByBurn(
   grossTokenAmount: bigint,
-  burnBps = BURN_BPS
+  burnBps: number = BURN_BPS
 ): {
   burnBps: number;
   burnTokenAmount: bigint;
