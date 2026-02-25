@@ -57,6 +57,9 @@ export async function GET() {
             const burnATA = await getAssociatedTokenAddress(mintKey, burnKey, false);
             const account = await getAccount(connection, burnATA);
             chainBurned = account.amount;
+            if (chainBurned === BigInt(0)) {
+                chainBurned = platformBurned;
+            }
         } catch (e) {
             console.warn("Solana burn fetch failed, using DB stats as fallback:", e);
             chainBurned = platformBurned;

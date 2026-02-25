@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const split = splitTokenAmountsByBurn(tokenAmountBaseUnits, burnBps);
 
     const typePrefix = isSubscription ? "subscribe" : "deposit";
-    const memo = `ap:${typePrefix}:${Date.now()}:${auth.userId.slice(-6)}${burnBps > 0 ? `:b${burnBps}` : ""}`;
+    const memo = `ap:${typePrefix}:${Date.now()}:${auth.userId.slice(-6)}:b${burnBps}`;
     const intentExpiresAt = new Date(Date.now() + resolvePurchaseIntentTtlMs());
 
     const tx = await prisma.tokenTransaction.create({

@@ -250,7 +250,7 @@ export async function quoteTokenAmountForUsd(params: {
 
 export function parseBurnBpsFromMemo(memo: string): number {
   const match = memo.match(/:b(\d{1,5})$/);
-  if (!match) return parseBurnBps();
+  if (!match) return 0; // Default to 0 if no burn specified in memo
   const parsed = Number(match[1]);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
   if (parsed > 10_000) return 10_000;
