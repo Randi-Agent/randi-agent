@@ -12,7 +12,7 @@ export class TransactionScanner {
         this.tokenMint = tokenMint;
     }
 
-    async scanRecentTransactions(limit = 10): Promise<number> {
+    async scanRecentTransactions(limit = 25): Promise<number> {
         const treasuryPubKey = new PublicKey(this.treasuryWallet);
         const signatures = await connection.getSignaturesForAddress(treasuryPubKey, {
             limit,

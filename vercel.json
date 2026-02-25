@@ -5,5 +5,11 @@
     "framework": "nextjs",
     "regions": [
         "iad1"
+    ],
+    "crons": [
+        {
+            "path": "/api/cron/scan",
+            "schedule": "*/5 * * * *"
+        }
     ]
 }
