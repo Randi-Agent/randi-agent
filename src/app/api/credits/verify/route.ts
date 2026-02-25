@@ -178,10 +178,13 @@ export async function POST(request: NextRequest) {
     const split = splitTokenAmountsByBurn(expectedTokenAmount, burnBps);
     const paymentAsset = resolvePaymentAsset();
 
-    const treasuryWallet = process.env.TREASURY_WALLET || "2Hnkz9D72u7xcoA18tMdFLSRanAkj4eWcGB7iFH296N7";
+    // FIX (HIGH): Removed hardcoded treasury wallet fallback.
+    // The application must fail loudly if TREASURY_WALLET is not configured.
+    const treasuryWallet = process.env.TREASURY_WALLET;
     if (!treasuryWallet) {
+      console.error("CRITICAL: TREASURY_WALLET environment variable is not set.");
       return NextResponse.json(
-        { error: "Payment verification is missing treasury wallet config" },
+        { error: "Payment verification is not available: treasury wallet is not configured." },
         { status: 500 }
       );
     }

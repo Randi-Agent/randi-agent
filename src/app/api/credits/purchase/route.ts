@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthError, requireAuth, handleAuthError } from "@/lib/auth/middleware";
-import { getTokenPacks } from "@/lib/tokenomics";
+import { getTokenPacks, BURN_BPS } from "@/lib/tokenomics";
 import { prisma } from "@/lib/db/prisma";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
 import {
-  quoteTokenAmountForUsd,
   resolvePaymentAsset,
   resolveSolBurnWallet,
   splitTokenAmountsByBurn,
@@ -17,7 +16,6 @@ const schema = z.object({
 
 const DEFAULT_PURCHASE_INTENT_TTL_MS = 15 * 60 * 1000;
 const MAX_PURCHASE_INTENT_TTL_MS = 24 * 60 * 60 * 1000;
-const WSOL_MINT = "So11111111111111111111111111111111111111112";
 
 function resolvePurchaseIntentTtlMs(): number {
   const raw = Number(process.env.PURCHASE_INTENT_TTL_MS || DEFAULT_PURCHASE_INTENT_TTL_MS);
@@ -56,26 +54,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid package ID" }, { status: 400 });
     }
 
-    // 2. Resolve pricing
-    // Although we want "No USD abstraction", for the initial purchase 
-    // we still need to calculate how many tokens to send if we don't have a fixed price yet.
-    // However, the TokenPack has a fixed tokenAmount. 
-    // We should probably just use that.
-
+    // 2. Resolve token amount
     const tokenAmountToTransfer = pkg.tokenAmount; // whole tokens
     const decimals = Number(process.env.TOKEN_DECIMALS || process.env.NEXT_PUBLIC_TOKEN_DECIMALS || "6");
     const tokenAmountBaseUnits = BigInt(tokenAmountToTransfer) * BigInt(10 ** decimals);
 
     const paymentAsset = "spl"; // Force SPL for $RANDI
-    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
-    const treasuryWallet = process.env.TREASURY_WALLET || "2Hnkz9D72u7xcoA18tMdFLSRanAkj4eWcGB7iFH296N7";
+    const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT;
+    if (!tokenMint) {
+      throw new Error("CRITICAL: TOKEN_MINT environment variable is not set.");
+    }
 
+    // FIX (CRITICAL): All payments use the canonical BURN_BPS from tokenomics.ts.
+    // Previously, deposits used 0% burn while subscriptions used 7000 (70%).
+    // Now all payment types consistently apply the current phase burn rate.
     const isSubscription = (pkg as any).type === "subscription";
-    const burnBps = isSubscription ? 7000 : 0;
-    const split = splitTokenAmountsByBurn(tokenAmountBaseUnits, burnBps);
+    const effectiveBurnBps = BURN_BPS; // Always use the canonical rate
+    const split = splitTokenAmountsByBurn(tokenAmountBaseUnits, effectiveBurnBps);
+
+    // FIX (HIGH): Removed hardcoded treasury wallet fallback.
+    // The application must fail loudly if TREASURY_WALLET is not configured.
+    const treasuryWallet = process.env.TREASURY_WALLET;
+    if (!treasuryWallet) {
+      throw new Error("CRITICAL: TREASURY_WALLET environment variable is not set.");
+    }
 
     const typePrefix = isSubscription ? "subscribe" : "deposit";
-    const memo = `ap:${typePrefix}:${Date.now()}:${auth.userId.slice(-6)}:b${burnBps}`;
+    const memo = `ap:${typePrefix}:${Date.now()}:${auth.userId.slice(-6)}:b${effectiveBurnBps}`;
     const intentExpiresAt = new Date(Date.now() + resolvePurchaseIntentTtlMs());
 
     const tx = await prisma.tokenTransaction.create({
@@ -104,12 +109,12 @@ export async function POST(request: NextRequest) {
       memo,
       decimals,
       quote: {
-        itemUsd: "0", // Not used anymore
+        itemUsd: "0",
         itemName: pkg.name,
         tokenUsdPrice: "0",
         tokenAmountDisplay: pkg.tokenAmount.toLocaleString(),
         source: "fixed",
-        burnBps: 0,
+        burnBps: effectiveBurnBps,
       },
       intentExpiresAt: intentExpiresAt.toISOString(),
     });

@@ -1,3 +1,9 @@
+// IMPORTANT: BURN_BPS is the single source of truth — imported from tokenomics.ts.
+// The previous parseBurnBps() function that defaulted to 1000 (10%) has been removed.
+// All burn calculations MUST use BURN_BPS from tokenomics to stay in sync with
+// the published BURN_SCHEDULE.md policy.
+import { BURN_BPS } from "@/lib/tokenomics";
+
 const USD_SCALE = 6;
 const PRICE_SCALE = 12;
 const DEFAULT_CACHE_MS = 20_000;
@@ -48,15 +54,6 @@ function formatAmount(amountBaseUnits: bigint, decimals: number, maxFraction = 6
   const clipped = fractionFull.slice(0, Math.min(maxFraction, decimals)).replace(/0+$/, "");
 
   return clipped.length > 0 ? `${whole.toString()}.${clipped}` : whole.toString();
-}
-
-function parseBurnBps(): number {
-  const raw = process.env.PAYMENT_BURN_BPS || "1000";
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed)) return 0;
-  if (parsed < 0) return 0;
-  if (parsed > 10_000) return 10_000;
-  return Math.trunc(parsed);
 }
 
 function getPriceCacheMs(): number {
@@ -191,9 +188,16 @@ export async function getTokenUsdPrice(mint: string): Promise<{
   }
 }
 
+/**
+ * Split a gross token amount into burn and treasury portions.
+ * Uses BURN_BPS from tokenomics.ts as the authoritative source.
+ * The burnBps parameter is kept for backward compatibility (e.g., reading
+ * the rate from a memo on an existing transaction) but defaults to the
+ * canonical BURN_BPS value.
+ */
 export function splitTokenAmountsByBurn(
   grossTokenAmount: bigint,
-  burnBps = parseBurnBps()
+  burnBps = BURN_BPS
 ): {
   burnBps: number;
   burnTokenAmount: bigint;

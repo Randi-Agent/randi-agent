@@ -18,27 +18,31 @@ export class TransactionScanner {
             limit,
         });
 
+        const validSigs = signatures.filter(s => !s.err).map(s => s.signature);
+        if (validSigs.length === 0) return 0;
+
+        // FIX (MEDIUM): Batch-fetch all already-processed signatures in ONE query
+        // instead of issuing a separate DB query per signature (N+1 pattern).
+        const existingTxs = await prisma.tokenTransaction.findMany({
+            where: { txSignature: { in: validSigs } },
+            select: { txSignature: true },
+        });
+        const processedSet = new Set(existingTxs.map(t => t.txSignature));
+
         let processedCount = 0;
 
-        for (const sigInfo of signatures) {
-            if (sigInfo.err) continue;
-
-            // Check if we've already processed this signature
-            const existing = await prisma.tokenTransaction.findUnique({
-                where: { txSignature: sigInfo.signature },
-            });
-
-            if (existing) continue;
+        for (const sig of validSigs) {
+            if (processedSet.has(sig)) continue;
 
             // Fetch and parse the transaction
-            const tx = await connection.getParsedTransaction(sigInfo.signature, {
+            const tx = await connection.getParsedTransaction(sig, {
                 maxSupportedTransactionVersion: 0,
                 commitment: "confirmed",
             });
 
             if (!tx) continue;
 
-            const result = await this.tryProcessTransaction(tx, sigInfo.signature);
+            const result = await this.tryProcessTransaction(tx, sig);
             if (result) processedCount++;
         }
 
@@ -135,11 +139,14 @@ export class TransactionScanner {
 }
 
 export async function runScanner() {
-    const treasury = process.env.TREASURY_WALLET || "2Hnkz9D72u7xcoA18tMdFLSRanAkj4eWcGB7iFH296N7";
-    const mint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
+    // FIX (HIGH): Removed hardcoded fallback addresses.
+    // If these env vars are missing, the scanner skips gracefully rather than
+    // silently scanning the wrong wallet.
+    const treasury = process.env.TREASURY_WALLET;
+    const mint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT;
 
     if (!treasury || !mint) {
-        console.warn("Scanner skipped: TREASURY_WALLET or TOKEN_MINT not configured.");
+        console.warn("Scanner skipped: TREASURY_WALLET or TOKEN_MINT environment variables are not configured.");
         return 0;
     }
 

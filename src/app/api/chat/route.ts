@@ -40,6 +40,9 @@ const schema = z
 
 const MAX_HISTORY_MESSAGES = 40;
 const MAX_TOOL_LOOP_STEPS = 4;
+// FIX (LOW): Maximum wall-clock time for the entire tool-enabled chat turn.
+// Prevents runaway agent sessions from consuming resources indefinitely.
+const TOOL_LOOP_TIMEOUT_MS = 90_000; // 90 seconds
 const TOOL_USAGE_SYSTEM_INSTRUCTION =
   "You have access to tools. For requests involving external services (GitHub, Slack, Notion, Gmail, Google Sheets, Google Calendar, Supabase, Vercel, Hacker News), call the best matching tool first before replying. If the user explicitly names a service (for example Gmail), only use tools from that service unless they ask for something else. Do not claim lack of access when tools are available. Never simulate or invent tool results.";
 
@@ -341,8 +344,17 @@ async function runToolEnabledChat(
   const messages: ChatMessageParam[] = [...baseMessages];
   const fullTurnMessages: Array<{ role: string; content: string; toolCalls: string | null }> = [];
 
+  // FIX (LOW): Enforce a hard timeout on the entire tool loop to prevent
+  // runaway agent sessions. AbortSignal is passed to each LLM call.
+  const loopAbortController = new AbortController();
+  const loopTimeoutId = setTimeout(() => loopAbortController.abort(), TOOL_LOOP_TIMEOUT_MS);
+
   try {
     for (let iteration = 0; iteration < MAX_TOOL_LOOP_STEPS; iteration += 1) {
+      if (loopAbortController.signal.aborted) {
+        console.warn(`[chat] Tool loop timed out after ${TOOL_LOOP_TIMEOUT_MS}ms for session ${sessionId}`);
+        break;
+      }
       const chatResponse = await openrouter.chat.completions.create({
         model,
         messages,
@@ -448,6 +460,7 @@ async function runToolEnabledChat(
       }
     }
 
+    clearTimeout(loopTimeoutId);
     return {
       responseText: "I've reached the maximum number of tool steps for this request.",
       toolCalls,
@@ -455,6 +468,7 @@ async function runToolEnabledChat(
       fullTurnMessages
     };
   } catch (error) {
+    clearTimeout(loopTimeoutId);
     if (process.env.NODE_ENV !== "production") {
       console.warn("Tool-enabled chat failed, falling back to text-only chat.", error);
     } else {
@@ -479,6 +493,8 @@ async function runToolEnabledChat(
       pausedForApproval: false,
       fullTurnMessages: [],
     };
+  } finally {
+    clearTimeout(loopTimeoutId);
   }
 
   return {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 import {
     buildStorageKey,
@@ -47,15 +48,22 @@ export async function GET(req: NextRequest) {
  *
  * Body: { agentSlug: string, action: "record" | "upload-url", sizeBytes?: number }
  */
+// FIX (MEDIUM): Added Zod schema validation for POST body
+const snapshotPostSchema = z.discriminatedUnion("action", [
+    z.object({ action: z.literal("upload-url"), agentSlug: z.string().min(1) }),
+    z.object({ action: z.literal("record"), agentSlug: z.string().min(1), sizeBytes: z.number().int().nonnegative() }),
+]);
+
 export async function POST(req: NextRequest) {
     try {
         const auth = await requireAuth();
-        const body = await req.json();
-        const { agentSlug, action, sizeBytes } = body;
-
-        if (!agentSlug || !action) {
-            return NextResponse.json({ error: "agentSlug and action are required" }, { status: 400 });
+        const rawBody = await req.json();
+        const parsed = snapshotPostSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
         }
+        const { agentSlug, action } = parsed.data;
+        const sizeBytes = parsed.data.action === "record" ? parsed.data.sizeBytes : undefined;
 
         const storageKey = buildStorageKey(auth.userId, agentSlug);
 
@@ -68,10 +76,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === "record") {
-            if (typeof sizeBytes !== "number") {
-                return NextResponse.json({ error: "sizeBytes is required for record action" }, { status: 400 });
-            }
-            await recordSnapshot(auth.userId, agentSlug, storageKey, sizeBytes);
+            // sizeBytes is guaranteed to be a number here by the Zod schema
+            await recordSnapshot(auth.userId, agentSlug, storageKey, sizeBytes!);
             return NextResponse.json({ success: true });
         }
 

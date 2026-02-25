@@ -15,8 +15,16 @@ export async function GET(request: NextRequest) {
         }
     }
 
-    const treasury = process.env.TREASURY_WALLET || "2Hnkz9D72u7xcoA18tMdFLSRanAkj4eWcGB7iFH296N7";
-    const mint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
+    // FIX (HIGH): Removed hardcoded fallback addresses.
+    const treasury = process.env.TREASURY_WALLET;
+    const mint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT;
+
+    if (!treasury || !mint) {
+        return NextResponse.json(
+            { error: "TREASURY_WALLET or TOKEN_MINT environment variables are not configured." },
+            { status: 500 }
+        );
+    }
 
     // 1. Get pending intents from DB
     const pendingIntents = await prisma.tokenTransaction.findMany({

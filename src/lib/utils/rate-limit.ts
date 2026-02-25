@@ -42,6 +42,23 @@ export const RATE_LIMITS = {
     windowMs: envInt("RATE_LIMIT_PROVISION_WINDOW_MS", 60 * 1000),
   },
   general: { maxRequests: 30, windowMs: 60 * 1000 },
+  // FIX (HIGH): New rate limits for previously unprotected routes
+  chat: {
+    maxRequests: envInt("RATE_LIMIT_CHAT_MAX_REQUESTS", 20),
+    windowMs: envInt("RATE_LIMIT_CHAT_WINDOW_MS", 60 * 1000),
+  },
+  solanaRpc: {
+    maxRequests: envInt("RATE_LIMIT_SOLANA_RPC_MAX_REQUESTS", 60),
+    windowMs: envInt("RATE_LIMIT_SOLANA_RPC_WINDOW_MS", 60 * 1000),
+  },
+  agents: {
+    maxRequests: envInt("RATE_LIMIT_AGENTS_MAX_REQUESTS", 60),
+    windowMs: envInt("RATE_LIMIT_AGENTS_WINDOW_MS", 60 * 1000),
+  },
+  toolApproval: {
+    maxRequests: envInt("RATE_LIMIT_TOOL_APPROVAL_MAX_REQUESTS", 30),
+    windowMs: envInt("RATE_LIMIT_TOOL_APPROVAL_WINDOW_MS", 60 * 1000),
+  },
 } as const;
 
 type RateLimitResult = { allowed: boolean; remaining: number; resetAt: number };

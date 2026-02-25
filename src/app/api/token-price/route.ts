@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getTokenPacks } from "@/lib/tokenomics";
 import { getTokenUsdPrice } from "@/lib/payments/token-pricing";
 import { connection } from "@/lib/solana/connection";
 import { PublicKey } from "@solana/web3.js";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
 
 // Cache: refresh every 30s
 let cachedPrice: { usd: string; timestamp: number; supply: number } | null = null;
@@ -13,7 +14,14 @@ function roundUpTo1K(value: number): number {
     return Math.ceil(value / 1000) * 1000;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    // FIX (HIGH): Rate limit this public endpoint to prevent price-scraping abuse
+    const ip = request.headers.get("x-forwarded-for") ?? "anon";
+    const { allowed } = await checkRateLimit(`token-price:${ip}`, RATE_LIMITS.general);
+    if (!allowed) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     try {
         const tokenMint = process.env.TOKEN_MINT || process.env.NEXT_PUBLIC_TOKEN_MINT || "FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump";
 

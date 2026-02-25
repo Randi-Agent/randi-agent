@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth, handleAuthError, AuthError } from "@/lib/auth/middleware";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/utils/rate-limit";
+
+// FIX (MEDIUM): This route is now authenticated and rate-limited.
+// Previously it was an open proxy that anyone could use to consume our RPC credits.
 
 export const dynamic = "force-dynamic";
 
@@ -66,12 +71,25 @@ function shouldRetryRpcResponse(status: number, responseText: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
-  let payload: unknown;
   try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    // FIX (MEDIUM): Require authentication before proxying RPC calls
+    const auth = await requireAuth();
+
+    // FIX (HIGH): Rate limit per user to prevent abuse
+    const { allowed } = await checkRateLimit(
+      `solana-rpc:${auth.userId}`,
+      RATE_LIMITS.solanaRpc
+    );
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many RPC requests" }, { status: 429 });
+    }
+
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
   const rpcCandidates = getSolanaRpcCandidates();
   let upstreamResponse: Response | null = null;
@@ -109,10 +127,14 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json(
-    { error: "Unable to reach configured Solana RPC endpoints" },
-    {
-      status: 502,
+    return NextResponse.json(
+      { error: "Unable to reach configured Solana RPC endpoints" },
+      { status: 502 }
+    );
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return handleAuthError(error);
     }
-  );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
