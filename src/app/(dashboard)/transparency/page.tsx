@@ -11,10 +11,9 @@ interface BurnStat {
 }
 
 interface BurnData {
-    totalBurned: string;
-    totalTreasury: string;
+    totalBurned: string; // Global chain-wide
+    platformBurned: string; // Internal system-specific
     totalVolume: string;
-    burnPercent: number;
     history: BurnStat[];
 }
 
@@ -83,19 +82,19 @@ export default function TransparencyPage() {
                     </p>
                 </div>
 
-                {/* Total Revenue */}
+                {/* Platform Revenue */}
                 <div className="bg-card border border-primary/20 rounded-xl p-6 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform">
                         <svg className="w-12 h-12 text-primary" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 1.88 1.55 3.14 3.3 3.61V21h3v-2.14c1.89-.35 3.5-1.35 3.5-3.5 0-2.58-2.14-3.46-4.61-4.04l-.21-.06z" />
                         </svg>
                     </div>
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Treasury Revenue 🏦</p>
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Platform Burn 🌪️</p>
                     <h3 className="text-2xl font-mono font-bold text-primary">
-                        {loading ? "..." : formatTokens(data?.totalTreasury)}
+                        {loading ? "..." : formatTokens(data?.platformBurned)}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {loading ? "Calculating..." : formatUsd(data?.totalTreasury)}
+                        {loading ? "Calculating..." : formatUsd(data?.platformBurned)}
                     </p>
                 </div>
 

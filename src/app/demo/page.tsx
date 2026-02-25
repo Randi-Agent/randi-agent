@@ -78,29 +78,34 @@ const demoSteps = [
     },
     {
         title: "4. Subscribe with RANDI",
-        description: "$20/month in RANDI tokens — 70% burned permanently, 30% to treasury.",
+        description: "$20/month block of RANDI — 70% burned permanently, 30% to treasury.",
         content: (
             <div className="bg-card border border-border rounded-xl p-5 space-y-3">
                 <div className="flex items-baseline justify-between">
                     <span className="text-lg font-bold">Randi Pro</span>
-                    <span className="text-2xl font-bold">$20<span className="text-sm text-muted-foreground font-normal">/mo</span></span>
+                    <span className="text-2xl font-bold">$20<span className="text-sm text-muted-foreground font-normal">/ea</span></span>
                 </div>
                 <div className="text-xs space-y-1 bg-muted/50 rounded-lg p-3">
                     <div className="flex justify-between">
                         <span>Total RANDI</span>
-                        <span className="font-mono">~1.84M</span>
+                        <span className="font-mono">2,000,000</span>
                     </div>
                     <div className="flex justify-between">
                         <span>To Treasury (30%)</span>
-                        <span className="font-mono">~552K</span>
+                        <span className="font-mono">600,000</span>
                     </div>
                     <div className="flex justify-between text-orange-400">
                         <span>Burned 🔥 (70%)</span>
-                        <span className="font-mono">~1.28M</span>
+                        <span className="font-mono">1,400,000</span>
                     </div>
                 </div>
                 <div className="text-[11px] text-muted-foreground space-y-1">
-                    <p>✓ Unlimited AI chats  ✓ All tools  ✓ Priority access</p>
+                    <p>✓ Priority access  ✓ All tools  ✓ Multi-agent workflows</p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] opacity-80 border-t border-border pt-2">
+                        <span>Standard Agents: ~400 calls</span>
+                        <span>Premium (Sonnet): ~66 calls</span>
+                        <span className="col-span-2">Ultra (o1): ~13 calls</span>
+                    </div>
                 </div>
             </div>
         ),

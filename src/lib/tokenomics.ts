@@ -79,8 +79,8 @@ export const TREASURY_BPS = 10_000 - BURN_BPS;
 
 export const AGENT_PRICING = {
     STANDARD: 5_000,
-    PREMIUM: 25_000,
-    ULTRA: 50_000,
+    PREMIUM: 30_000,
+    ULTRA: 150_000,
 } as const;
 
 export type AgentTier = keyof typeof AGENT_PRICING;
@@ -242,11 +242,12 @@ export function getTokenPacks(): TokenPack[] {
         },
         {
             id: "pro_monthly",
-            name: "Randi Pro (Monthly)",
-            tokenAmount: 1_840_000,    // ~$20 at current price
+            name: "Randi Pro (Subscription)",
+            tokenAmount: 2_000_000,    // ~$20 at current price
             bonusPercent: 0,
-            estimatedStandardCalls: 999999, // Unlimited indicator
-            estimatedPremiumCalls: 999999,
+            estimatedStandardCalls: 400, // 2M / 5,000
+            estimatedPremiumCalls: 66,   // 2M / 30,000
+            estimatedUltraCalls: 13,    // 2M / 150,000 
             type: "subscription"  // Add a type to distinguish from deposits
         } as any,
     ];
