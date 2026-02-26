@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type OpenAI from "openai";
-import { openrouter, isUnmeteredModel, DEFAULT_MODEL } from "@/lib/openrouter/client";
+import { openrouter, isUnmeteredModel, DEFAULT_MODEL, createChatCompletion } from "@/lib/openrouter/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 import {
@@ -299,7 +299,7 @@ async function runTextOnlyChat(
   model: string,
   messages: ChatMessageParam[]
 ): Promise<string> {
-  const chatResponse = await openrouter.chat.completions.create({
+  const chatResponse = await createChatCompletion({
     model,
     messages,
   });
@@ -365,7 +365,7 @@ async function runToolEnabledChat(
         console.warn(`[chat] Tool loop timed out after ${TOOL_LOOP_TIMEOUT_MS}ms for session ${sessionId}`);
         break;
       }
-      const chatResponse = await openrouter.chat.completions.create({
+      const chatResponse = await createChatCompletion({
         model,
         messages,
         tools,
@@ -442,6 +442,10 @@ async function runToolEnabledChat(
           rawResult = await executeClawnchTool(toolCall.function.name, args);
         } else {
           rawResult = await executeOpenAIToolCall(userId, toolCall);
+        }
+
+        if (rawResult.length > 15000) {
+          rawResult = rawResult.substring(0, 15000) + "... [Truncated for brevity]";
         }
 
         const parsedResult = parseJsonSafely(rawResult);
@@ -830,7 +834,7 @@ export async function POST(req: NextRequest) {
           // Improved title generation via AI summary
           let title = message.substring(0, 50);
           try {
-            const titleResponse = await openrouter.chat.completions.create({
+            const titleResponse = await createChatCompletion({
               model: "google/gemini-2.0-flash-lite-preview-02-05:free",
               messages: [
                 {

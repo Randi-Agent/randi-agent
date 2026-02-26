@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { openrouter } from "@/lib/openrouter/client";
+import { openrouter, createChatCompletion } from "@/lib/openrouter/client";
 import { getAgentToolsFromConfig, executeOpenAIToolCall } from "@/lib/composio/client";
 import { SkillManager } from "@/lib/skills/manager";
 import type OpenAI from "openai";
@@ -147,7 +147,7 @@ export async function executeOrchestrationToolCall(
             // To keep it simple and avoid deep recursion in one request, we'll allow 
             // the specialist to use tools but we'll manage it here.
 
-            const response = await openrouter.chat.completions.create({
+            const response = await createChatCompletion({
                 model: agent.defaultModel,
                 messages,
                 tools: specialistTools.length > 0 ? specialistTools : undefined,
@@ -161,12 +161,16 @@ export async function executeOrchestrationToolCall(
             if (message.tool_calls && message.tool_calls.length > 0) {
                 const toolResults = await Promise.all(
                     message.tool_calls.map(async (tc) => {
-                        const result = await executeOpenAIToolCall(userId, tc);
+                        let result = await executeOpenAIToolCall(userId, tc);
+                        // Truncate massive tool outputs to avoid crashing the model's context window
+                        if (result.length > 10000) {
+                            result = result.substring(0, 10000) + "... [Truncated for brevity]";
+                        }
                         return { role: "tool" as const, tool_call_id: tc.id, content: result };
                     })
                 );
 
-                const finalResponse = await openrouter.chat.completions.create({
+                const finalResponse = await createChatCompletion({
                     model: agent.defaultModel,
                     messages: [...messages, message, ...toolResults],
                 });

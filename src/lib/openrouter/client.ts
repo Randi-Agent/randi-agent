@@ -12,7 +12,9 @@ export const openrouter = new OpenAI({
     defaultHeaders: {
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         "X-Title": "Randi Agent Platform",
-    }
+        "X-OpenRouter-Retries": "3", // Ask OpenRouter itself to retry
+    },
+    maxRetries: 3, // Enable OpenAI client retries
 });
 
 export const DEFAULT_MODEL =
@@ -20,4 +22,24 @@ export const DEFAULT_MODEL =
 
 export function isUnmeteredModel(modelId: string): boolean {
     return modelId.endsWith(":free") || modelId.includes("/free");
+}
+
+export async function createChatCompletion(options: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming) {
+    let lastError: any;
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await openrouter.chat.completions.create(options);
+        } catch (error: any) {
+            lastError = error;
+            // Retry on 503, 429, 502, 504
+            const status = error.status || error.statusCode;
+            if (status === 503 || status === 429 || status === 502 || status === 504) {
+                const wait = Math.pow(2, i) * 1000;
+                await new Promise((r) => setTimeout(r, wait));
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
 }
