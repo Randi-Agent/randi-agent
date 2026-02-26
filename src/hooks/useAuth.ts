@@ -151,13 +151,36 @@ export function useAuth() {
       );
     }
 
-    // syncSession performs the POST to issue the cookie. 
-    // If it succeeds with a 200 OK, we trust it.
+    // syncSession performs the POST to issue the cookie.
+    // After the Set-Cookie response, we verify the cookie is actually readable
+    // by the browser before declaring the session synced. This prevents a race
+    // condition where the login page redirects to /dashboard before the cookie
+    // is committed to the browser's cookie jar, causing the middleware to
+    // redirect back to /login (the "double sign-in" bug).
     await syncSession();
 
-    // We no longer call hasServerSession() here immediately.
-    // Following the Set-Cookie response, the next request will naturally 
-    // include it, and the UI can proceed as "synced".
+    // Verify the cookie landed — retry up to 3 times with 300ms gaps
+    // to account for browser cookie propagation delay.
+    let cookieConfirmed = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
+      }
+      cookieConfirmed = await hasServerSession();
+      if (cookieConfirmed) break;
+    }
+
+    if (!cookieConfirmed) {
+      // Cookie didn't land — treat as a sync failure so the retry loop
+      // will re-attempt on the next tick rather than redirecting prematurely.
+      sharedNextRetryAt = Date.now() + DEFAULT_RETRY_DELAY_MS;
+      throw new SessionSyncError(
+        "Session cookie could not be confirmed. Retrying...",
+        "cookie_not_confirmed",
+        DEFAULT_RETRY_DELAY_MS
+      );
+    }
+
     sharedSessionSynced = true;
     sharedNextRetryAt = 0;
     sharedSyncAttempts = 0;
