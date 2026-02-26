@@ -641,7 +641,7 @@ export async function POST(req: NextRequest) {
       ? toolsForRequest.filter((tool) => !tool.function.name.startsWith("GITHUB_"))
       : toolsForRequest;
 
-     // ── SKILLS SYSTEM ─────────────────────────────────────────────────────────
+    // ── SKILLS SYSTEM ─────────────────────────────────────────────────────────
     // Parse the agent's configured skills from its tools JSON config.
     // Knowledge skills are injected into the system prompt context.
     // Action skills (e.g. clawnch) are registered as callable tools.
@@ -655,7 +655,11 @@ export async function POST(req: NextRequest) {
       try {
         const parsedConfig = JSON.parse(agent.tools);
         const requestedInternalTools = Array.isArray(parsedConfig.tools) ? parsedConfig.tools : [];
-        if (requestedInternalTools.includes("delegate_to_specialist") || requestedInternalTools.includes("spawn_autonomous_developer")) {
+        if (requestedInternalTools.includes("delegate_to_specialist") ||
+          requestedInternalTools.includes("spawn_autonomous_developer") ||
+          requestedInternalTools.includes("browse_web") ||
+          requestedInternalTools.includes("list_available_skills") ||
+          requestedInternalTools.includes("load_skill_context")) {
           combinedTools = [...combinedTools, ...ORCHESTRATION_TOOLS];
         }
       } catch (err) {

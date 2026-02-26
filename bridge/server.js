@@ -362,6 +362,52 @@ app.post('/spawn-ao', auth, async (req, res) => {
     }
 });
 
+// --- BROWSER INTERACTION (vercel-labs/agent-browser) ---
+app.post('/browse', auth, async (req, res) => {
+    const { url, action = 'snapshot', selector, text, wait } = req.body;
+
+    if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+    }
+
+    try {
+        const { execSync } = require('child_process');
+        
+        let command = `agent-browser ${action} "${url}"`;
+        if (selector) command += ` --selector "${selector}"`;
+        if (text) command += ` --text "${text}"`;
+        if (wait) command += ` --wait ${wait}`;
+
+        console.log(`[Browser] Executing: ${command}`);
+        
+        // Execute synchronously for simple request-response. 
+        // We set a 30s timeout to prevent hanging.
+        const output = execSync(command, { 
+            encoding: 'utf8', 
+            timeout: 30000,
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large snapshots
+        });
+
+        res.json({ 
+            success: true, 
+            url, 
+            action, 
+            output 
+        });
+    } catch (err) {
+        console.error("[Browser] Execution failed:", err.message);
+        
+        const isNotFound = err.message.includes("not found") || err.message.includes("command not found");
+        
+        res.status(500).json({ 
+            error: isNotFound 
+                ? "agent-browser CLI not found on host. Run 'npm install -g @vercel/agent-browser' on the EC2 instance."
+                : "Browser command failed.",
+            details: err.stderr || err.message 
+        });
+    }
+});
+
 // --- RESOURCE MONITORING ---
 app.get('/containers/:id/stats', auth, async (req, res) => {
     try {

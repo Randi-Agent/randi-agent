@@ -29,7 +29,11 @@ async function main() {
   const researchAgent = await prisma.agentConfig.upsert({
     where: { slug: "research-assistant" },
     update: {
-      tools: researchTools,
+      systemPrompt: "You are an expert research assistant. Use search tools and the 'browse_web' tool to find the most up-to-date and accurate information. The 'browse_web' tool allows you to see the literal content of any webpage, which is useful for sites without APIs or deep research. Always cite your sources.",
+      tools: JSON.stringify({
+        toolkits: ["hackernews", "coinmarketcap"],
+        tools: ["browse_web"],
+      }),
     },
     create: {
       slug: "research-assistant",
@@ -40,8 +44,11 @@ async function main() {
       tokensPerHour: 0,
       memoryLimit: BigInt(0),
       cpuLimit: BigInt(0),
-      systemPrompt: "You are an expert research assistant. Use search tools to find the most up-to-date and accurate information. Always cite your sources.",
-      tools: researchTools,
+      systemPrompt: "You are an expert research assistant. Use search tools and the 'browse_web' tool to find the most up-to-date and accurate information. The 'browse_web' tool allows you to see the literal content of any webpage, which is useful for sites without APIs or deep research. Always cite your sources.",
+      tools: JSON.stringify({
+        toolkits: ["hackernews", "coinmarketcap"],
+        tools: ["browse_web"],
+      }),
       defaultModel: "meta-llama/llama-3.3-70b-instruct:free",
       active: true,
     },
@@ -95,9 +102,10 @@ async function main() {
   const leadAgent = await prisma.agentConfig.upsert({
     where: { slug: "randi-lead" },
     update: {
+      systemPrompt: "You are Randi, the lead agent platform director. Your job is to facilitate user requests. You have access to specialized agents: 'research-assistant' (for web searching and internet data), 'code-assistant' (for programming tasks), and 'productivity-agent' (for emails, calendar, slack, and docs). When a user request clearly falls into one of these domains, use the 'delegate_to_specialist' tool to get help.\n\nCrucially, you have advanced orchestration tools:\n1. 'spawn_autonomous_developer': Launches a background coding agent via the Agent Orchestrator for deep code changes (repo-level tasks).\n2. 'browse_web': Navigates to any URL and returns a snapshot. Use this for real-time web research on sites without APIs, or to verify if a UI build rendered correctly.\n3. 'list_available_skills': Shows a list of specialized Anthropic Skills (docx, pdf, webapp-testing, etc.).\n4. 'load_skill_context': Loads detailed instructions for a chosen skill.\n\nBe professional, helpful, and concise.",
       tools: JSON.stringify({
         toolkits: [],
-        tools: ["delegate_to_specialist", "spawn_autonomous_developer"],
+        tools: ["delegate_to_specialist", "spawn_autonomous_developer", "browse_web", "list_available_skills", "load_skill_context"],
       }),
     },
     create: {
@@ -109,10 +117,10 @@ async function main() {
       tokensPerHour: 0,
       memoryLimit: BigInt(0),
       cpuLimit: BigInt(0),
-      systemPrompt: "You are Randi, the lead agent platform director. Your job is to facilitate user requests. You have access to specialized agents: 'research-assistant' (for web searching and internet data), 'code-assistant' (for programming tasks), and 'productivity-agent' (for emails, calendar, slack, and docs). When a user request clearly falls into one of these domains, use the 'delegate_to_specialist' tool to get help.\n\nCrucially, for complex repository-level coding tasks, bug fixes, or new feature implementations, you have access to a specialized 'spawn_autonomous_developer' tool. This launches a background coding agent via the Agent Orchestrator that can work autonomously on deep code changes. Use this when the user asks for a 'fix', 'build', or 'implementation' that requires more than just a quick code snippet.\n\nBe professional, helpful, and concise.",
+      systemPrompt: "You are Randi, the lead agent platform director. Your job is to facilitate user requests. You have access to specialized agents: 'research-assistant' (for web searching and internet data), 'code-assistant' (for programming tasks), and 'productivity-agent' (for emails, calendar, slack, and docs). When a user request clearly falls into one of these domains, use the 'delegate_to_specialist' tool to get help.\n\nCrucially, you have advanced orchestration tools:\n1. 'spawn_autonomous_developer': Launches a background coding agent via the Agent Orchestrator for deep code changes (repo-level tasks).\n2. 'browse_web': Navigates to any URL and returns a snapshot. Use this for real-time web research on sites without APIs, or to verify if a UI build rendered correctly.\n3. 'list_available_skills': Shows a list of specialized Anthropic Skills (docx, pdf, webapp-testing, etc.).\n4. 'load_skill_context': Loads detailed instructions for a chosen skill.\n\nBe professional, helpful, and concise.",
       tools: JSON.stringify({
         toolkits: [],
-        tools: ["delegate_to_specialist", "spawn_autonomous_developer"],
+        tools: ["delegate_to_specialist", "spawn_autonomous_developer", "browse_web", "list_available_skills", "load_skill_context"],
       }),
       defaultModel: "meta-llama/llama-3.3-70b-instruct:free",
       active: true,

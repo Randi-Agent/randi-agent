@@ -28,7 +28,15 @@
       "Bash(vercel env:*)",
       "Bash(npx prisma:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres.uoltahlxvmuyznfthgxv:wpK7KMSj4YVt9zO6@aws-1-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\" DIRECT_URL=\"postgresql://postgres.uoltahlxvmuyznfthgxv:wpK7KMSj4YVt9zO6@aws-1-us-east-2.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require\" npx prisma:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(ls:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(which vercel 2>/dev/null || npx vercel --version 2>/dev/null)",
+      "Bash(npx vercel:*)",
+      "WebFetch(domain:www.randi.chat)"
     ]
   }
 }
