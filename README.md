@@ -26,6 +26,14 @@ This project is built with a dual-purpose mission:
 1.  **Hosted Platform**: We provide a managed version of this platform at [randi.chat](https://www.randi.chat/), funded and powered by the **$RANDI** token on Pump.fun. Holding and using $RANDI fuels the development and operations of the ecosystem.
 2.  **Fully Self-Hostable**: In the spirit of true decentralization and open source, anyone can clone this repository and run their own instance of the Randi Agent platform for personal or enterprise use.
 
+### 🛡️ The Randi Difference
+
+Randi Agent was inspired by the rapid evolution of open-source AI frameworks like OpenClaw, but it adopts a fundamentally different, **security-first** approach:
+
+*   **Hardened Isolation**: While many frameworks execute agent tools directly on the host system or in shared process spaces, Randi mandates the use of **isolated Docker containers** for every agent lifecycle. This ensures that even if an agent is compromised or behaves unexpectedly, the host infrastructure remains safe.
+*   **Trustless Orchestration**: By strictly enforcing **Privy-only authentication**, we eliminate common auth "footguns" and ensure that agent fleet management is governed by hardware-secured wallet keys.
+*   **Infrastructure over Interfaces**: Rather than just building a chat UI, Randi is designed as an **orchestration layer**. It focuses on the "plumbing"—fleet health, container recycling, and verified credit ledgers—needed to run AI agents at professional scale.
+
 ### 🚀 Key Features
 
 - **🔐 Privy Auth Only**: Secure, web3-native authentication architecture using Privy (strictly enforced).
