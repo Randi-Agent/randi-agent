@@ -20,6 +20,12 @@
 
 Randi Agent is a powerful, token-powered AI agent platform designed for seamless orchestration, secure wallet authentication, and containerized agent execution. It bridges the gap between high-level AI workflows and low-level system integrations using **Composio** and **Solana**.
 
+### 💎 Token Economy & Open Source
+
+This project is built with a dual-purpose mission:
+1.  **Hosted Platform**: We provide a managed version of this platform at [randi.chat](https://www.randi.chat/), funded and powered by the **$RANDI** token on Pump.fun. Holding and using $RANDI fuels the development and operations of the ecosystem.
+2.  **Fully Self-Hostable**: In the spirit of true decentralization and open source, anyone can clone this repository and run their own instance of the Randi Agent platform for personal or enterprise use.
+
 ### 🚀 Key Features
 
 - **🔐 Privy Auth Only**: Secure, web3-native authentication architecture using Privy (strictly enforced).
