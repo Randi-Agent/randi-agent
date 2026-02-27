@@ -123,6 +123,23 @@ If you believe in secure, decentralized AI orchestration, consider supporting th
 
 ---
 
+## 📜 Attributions & Acknowledgments
+
+Randi Agent stands on the shoulders of giants. We are proud to build upon and integrate with the following open-source projects and platforms:
+
+*   **[Anthropic Agent Skills](https://github.com/anthropics/skills)**: The foundational logic for our specialized agent skill system was derived from Anthropic's open-source skills repository.
+*   **[Alchemy Skills](https://github.com/alchemyplatform/skills)**: Powers our high-performance Web3 infrastructure and autonomous wallet authentication layers.
+*   **[Composio](https://github.com/composiohq/composio)**: Provides the robust connectivity layer allowing our agents to interact with 1000+ external tools and SaaS platforms.
+*   **[OpenClaw](https://github.com/openclaw/openclaw)**: A major inspiration for the open-source agent movement and decentralized AI infrastructure.
+*   **[Solana](https://github.com/solana-labs/solana)**: The core protocol enabling our secure payments, $RANDI token economy, and verified deposit workflows.
+*   **[Privy](https://www.privy.io/)**: Our primary authentication provider, enabling secure, non-custodial wallet connections.
+*   **[Vercel Agent Browser](https://github.com/vercel/agent-browser)**: Optimized web browsing capabilities for our autonomous research agents.
+*   **[Traefik](https://github.com/traefik/traefik)**: The edge router and reverse proxy managing our containerized agent fleet.
+*   **[Aider](https://github.com/paul-gauthier/aider)**: Inspires our autonomous developer agent logic.
+*   **[Clawnch](https://clawn.ch)**: Partner integration for token launch and agent network matching.
+
+---
+
 <div align="center">
   <sub>Built with ❤️ by the Randi Agent Team. &copy; 2026</sub>
   <br />
