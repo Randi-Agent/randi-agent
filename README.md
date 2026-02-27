@@ -11,7 +11,7 @@
   [![Auth: Privy](https://img.shields.io/badge/Auth-Privy-indigo)](https://www.privy.io/)
   [![Docker](https://img.shields.io/badge/Docker-Enabled-blue?logo=docker)](https://www.docker.com/)
 
-  [Explore Docs](docs/USER_GUIDE.md) · [Report Bug](../../issues/new?template=bug_report.yml) · [Request Feature](../../issues/new?template=feature_request.yml)
+  [Explore Docs](docs/USER_GUIDE.md) · [Report Bug](../../issues/new?template=bug_report.yml) · [Request Feature](../../issues/new?template=feature_request.yml) · [Support on Ko-fi](https://ko-fi.com/randiagent)
 </div>
 
 ---
@@ -112,6 +112,14 @@ We love contributions! Please read our **[Contributing Guidelines](.github/CONTR
 ## 🛡️ Security
 
 If you discover a security vulnerability, please refer to our **[Security Policy](.github/SECURITY.md)**.
+
+---
+
+## ☕ Support the Mission
+
+If you believe in secure, decentralized AI orchestration, consider supporting the Randi Agent platform on Ko-fi. Your contributions directly fund our open-source development and managed hosting infrastructure.
+
+<a href='https://ko-fi.com/O4O31AYXW8' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 ---
 
