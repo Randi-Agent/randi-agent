@@ -1,35 +1,108 @@
-# Agent Platform
+<div align="center">
+  <img src=".github/assets/banner.png" alt="Randi Agent Banner" width="100%">
 
-Token-powered AI agent platform with wallet auth, chat, containerized agent launches, credits, and Composio integrations.
+  # 🤖 Randi Agent Platform
+  
+  **The enterprise-grade AI agent orchestration layer powered by Solana and Composio.**
 
-## Docs
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+  [![Solana](https://img.shields.io/badge/Solana-Protocol-blue?logo=solana)](https://solana.com/)
+  [![Auth: Privy](https://img.shields.io/badge/Auth-Privy-indigo)](https://www.privy.io/)
+  [![Docker](https://img.shields.io/badge/Docker-Enabled-blue?logo=docker)](https://www.docker.com/)
 
-- User guide: `docs/USER_GUIDE.md`
-- Support and ticket workflow: `docs/SUPPORT_AND_TICKETING.md`
-- Private code/public support migration: `docs/PRIVATE_CODE_PUBLIC_SUPPORT_MIGRATION.md`
-- Deployment runbook: `DEPLOYMENT.md`
-- Payments operations: `PAYMENTS.md`
+  [Explore Docs](docs/USER_GUIDE.md) · [Report Bug](../../issues/new?template=bug_report.yml) · [Request Feature](../../issues/new?template=feature_request.yml)
+</div>
 
-## Local development
+---
 
-```bash
-npm install
-npm run dev
-```
+## 🌟 Overview
 
-Open `http://localhost:3000`.
+Randi Agent is a powerful, token-powered AI agent platform designed for seamless orchestration, secure wallet authentication, and containerized agent execution. It bridges the gap between high-level AI workflows and low-level system integrations using **Composio** and **Solana**.
 
-## Ticketing system
+### 🚀 Key Features
 
-This repo uses GitHub Issue Forms for structured support tickets:
+- **🔐 Privy Auth Only**: Secure, web3-native authentication architecture using Privy (strictly enforced).
+- **🔗 Composio Integration**: Out-of-the-box access to hundreds of tools and integrations for AI agents.
+- **🏗️ Containerized Agents**: Launch agents in isolated Docker containers for maximum security and scalability.
+- **💳 Credit System**: Token-gated access and credit management for agent usage.
+- **💬 Real-time Chat**: Unified interface for interacting with launched agents.
+- **⛓️ Solana Native**: Deep integration with Solana for payments ($RANDI token) and verified deposits.
 
-- Bug report
-- Integration issue
-- Payment and credits issue
-- Feature request
+---
 
-Issue templates live in `.github/ISSUE_TEMPLATE/`.
+## 🛠️ Current State & Progress
 
-## Self-hosted deployment
+The platform is currently in **Phase 1: Foundation & Orchestration**.
 
-Use `DEPLOYMENT.md` for AWS/EC2 rollout, migration, smoke tests, and rollback steps.
+- [x] **Core Architecture**: Next.js 15 frontend with Prisma/Supabase backend.
+- [x] **Agent Lifecycle**: Docker orchestration for dynamic agent spawning.
+- [x] **Auth Migration**: Successfully migrated to Privy as the sole sign-in provider.
+- [x] **Solana Integration**: Verified deposit workflow and $RANDI burn schedules implemented.
+- [ ] **Phase 2 (Upcoming)**: Enhanced agent memory layers and multi-agent coordination.
+
+---
+
+## 🚦 Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- Docker (running)
+- Solana Wallet
+
+### Installation
+
+1. **Clone and Install**
+   ```bash
+   git clone https://github.com/Randi-Agent/agent-platform.git
+   cd agent-platform
+   npm install
+   ```
+
+2. **Environment Setup**
+   Copy `.env.example` to `.env.local` and fill in your credentials (Privy, Supabase, Solana RPC).
+
+3. **Initialize Database**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+4. **Launch Development Server**
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) to see the platform in action.
+
+---
+
+## 📦 Documentation
+
+Deep dive into the architecture and workflows:
+
+- 📖 **[User Guide](docs/USER_GUIDE.md)**: How to use the platform.
+- 🛠️ **[Developer Guide](docs/PRIVATE_CODE_PUBLIC_SUPPORT_MIGRATION.md)**: Working with the codebase.
+- 🚀 **[Deployment Runbook](DEPLOYMENT.md)**: AWS/EC2 rollout procedures.
+- 💸 **[Payment Ops](PAYMENTS.md)**: Managing the $RANDI token economy.
+
+---
+
+## 🤝 Contributing
+
+We love contributions! Please read our **[Contributing Guidelines](.github/CONTRIBUTING.md)** and **[Code of Conduct](.github/CODE_OF_CONDUCT.md)** before submitting a Pull Request.
+
+---
+
+## 🛡️ Security
+
+If you discover a security vulnerability, please refer to our **[Security Policy](.github/SECURITY.md)**.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ by the Randi Agent Team. &copy; 2026</sub>
+  <br />
+  <a href="https://t.me/RandiAgent">Join our Telegram</a>
+</div>
