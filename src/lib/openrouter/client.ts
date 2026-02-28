@@ -1,24 +1,28 @@
 import OpenAI from "openai";
 
-const apiKey = process.env.OPENROUTER_API_KEY || "sk-no-key-set";
+const kiloKey = process.env.KILO_API_KEY;
+const openRouterKey = process.env.OPENROUTER_API_KEY;
+const apiKey = kiloKey || openRouterKey || "sk-no-key-set";
 
-if (!process.env.OPENROUTER_API_KEY && process.env.NODE_ENV === "production") {
-    console.warn("OPENROUTER_API_KEY is not set in environment variables");
+if (!apiKey && process.env.NODE_ENV === "production") {
+    console.warn("Neither KILO_API_KEY nor OPENROUTER_API_KEY is set");
 }
 
+// Rename this internal instance to 'gateway' but keep the export name
+// 'openrouter' for backward compatibility with existing imports.
 export const openrouter = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
+    baseURL: kiloKey ? "https://api.kilo.ai/api/gateway" : "https://openrouter.ai/api/v1",
     apiKey: apiKey,
     defaultHeaders: {
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         "X-Title": "Randi Agent Platform",
-        "X-OpenRouter-Retries": "3", // Ask OpenRouter itself to retry
+        "X-OpenRouter-Retries": "3",
     },
-    maxRetries: 3, // Enable OpenAI client retries
+    maxRetries: 3,
 });
 
 export const DEFAULT_MODEL =
-    process.env.OPENROUTER_DEFAULT_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
+    process.env.KILO_DEFAULT_MODEL || process.env.OPENROUTER_DEFAULT_MODEL || "meta-llama/llama-3.3-70b-instruct:free";
 
 export function isUnmeteredModel(modelId: string): boolean {
     return modelId.endsWith(":free") || modelId.includes("/free");
