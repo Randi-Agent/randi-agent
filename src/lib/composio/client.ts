@@ -308,7 +308,7 @@ export async function executeOpenAIToolCall(
   try {
     return await composioClient.provider.executeToolCall(
       resolvedUserId,
-      normalizedToolCall
+      normalizedToolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall
     );
   } catch (error) {
     const message =

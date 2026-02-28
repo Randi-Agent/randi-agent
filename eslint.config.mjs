@@ -1,10 +1,12 @@
-import nextVitalsConfig from "eslint-config-next/core-web-vitals.js";
-import nextTsConfig from "eslint-config-next/typescript.js";
+// @ts-check
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 
-export default [
-  nextVitalsConfig,
-  nextTsConfig,
+/** @type {import("eslint").Linter.Config[]} */
+const config = [
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"]
-  }
-].flat();
+    ignores: [".next/**", "out/**", "build/**"],
+  },
+];
+
+export default config;
