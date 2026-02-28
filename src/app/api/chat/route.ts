@@ -646,7 +646,7 @@ export async function POST(req: NextRequest) {
     const toolsForRequest =
       requestedToolPrefixes.length > 0 ? scopedTools : composioTools;
     const finalToolsForRequest = shouldPreferEmailTools(message)
-      ? toolsForRequest.filter((tool) => !tool.function.name.startsWith("GITHUB_"))
+      ? toolsForRequest.filter((tool) => tool.type === "function" && !tool.function.name.startsWith("GITHUB_"))
       : toolsForRequest;
 
     // ── SKILLS SYSTEM ─────────────────────────────────────────────────────────
