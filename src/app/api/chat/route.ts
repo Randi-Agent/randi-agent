@@ -327,6 +327,7 @@ interface RunToolChatOptions {
   userId: string;
   forceFirstToolCall: boolean;
   sessionId: string;
+  runtimeUrl?: string; // Add this
   writer: WritableStreamDefaultWriter<Uint8Array>;
   encoder: TextEncoder;
 }
@@ -339,7 +340,7 @@ async function runToolEnabledChat(
   pausedForApproval: boolean;
   fullTurnMessages: Array<{ role: string; content: string; toolCalls: string | null }>;
 }> {
-  const { model, baseMessages, tools, userId, forceFirstToolCall, sessionId, writer, encoder } = options;
+  const { model, baseMessages, tools, userId, forceFirstToolCall, sessionId, runtimeUrl, writer, encoder } = options;
 
   if (tools.length === 0) {
     return {
@@ -441,7 +442,7 @@ async function runToolEnabledChat(
           const args = JSON.parse(toolCall.function.arguments);
           rawResult = await executeClawnchTool(toolCall.function.name, args);
         } else {
-          rawResult = await executeOpenAIToolCall(userId, toolCall);
+          rawResult = await executeOpenAIToolCall(userId, toolCall, runtimeUrl);
         }
 
         if (rawResult.length > 15000) {
@@ -724,6 +725,16 @@ export async function POST(req: NextRequest) {
             return;
           }
 
+          // Discover active runtime for the resume path
+          const activeRuntime = await prisma.container.findFirst({
+            where: {
+              userId: auth.userId,
+              agentId: existingSession.agentId,
+              expiresAt: { gt: new Date() }
+            },
+            select: { url: true }
+          });
+
           let toolResultContent: string;
           if (approval.status === "APPROVED") {
             // Build a minimal tool_call message and execute
@@ -732,7 +743,7 @@ export async function POST(req: NextRequest) {
               type: "function",
               function: { name: approval.toolName, arguments: approval.toolArgs },
             };
-            toolResultContent = await executeOpenAIToolCall(auth.userId, toolCall);
+            toolResultContent = await executeOpenAIToolCall(auth.userId, toolCall, activeRuntime?.url);
           } else {
             // Rejected — inject a denial result so the LLM can respond gracefully
             toolResultContent = JSON.stringify({
@@ -755,6 +766,7 @@ export async function POST(req: NextRequest) {
               userId: auth.userId,
               forceFirstToolCall: false,
               sessionId: existingSession.id,
+              runtimeUrl: activeRuntime?.url,
               writer,
               encoder,
             });
@@ -796,6 +808,18 @@ export async function POST(req: NextRequest) {
         }
         // ── END RESUME PATH ───────────────────────────────────────────────────
 
+        // ── RUNTIME DISCOVERY ─────────────────────────────────────────────────
+        // Check if there's an active dedicated runtime for this user/agent pair.
+        // If found, tool execution will be routed to the isolated container.
+        const activeRuntime = await prisma.container.findFirst({
+          where: {
+            userId: auth.userId,
+            agentId: agent.id,
+            expiresAt: { gt: new Date() }
+          },
+          select: { url: true }
+        });
+
         const { responseText, toolCalls, pausedForApproval, fullTurnMessages } = await runToolEnabledChat({
           model,
           baseMessages: messages,
@@ -803,6 +827,7 @@ export async function POST(req: NextRequest) {
           userId: auth.userId,
           forceFirstToolCall,
           sessionId: existingSession?.id ?? "__new__",
+          runtimeUrl: activeRuntime?.url,
           writer,
           encoder,
         });

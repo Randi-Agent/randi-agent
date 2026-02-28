@@ -10,6 +10,7 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [x] **Vercel/Supabase Migration**: Cloud-native hosting with localized Ohio latency tuning.
 - [x] **Custom Domain**: Launch `randi.chat` with Cloudflare SSL.
 - [x] **Credits 1.0**: Finalize internal credit purchasing and balance tracking.
+- [ ] **UX & Runtime Resilience**: Decouple chat from provisioning to ensure zero-block user experience. (Current Focus)
 
 ## 🏗️ Phase 2: The "Body" (Compute Layer)
 **Objective**: Connect the Vercel "Brain" to the AWS "Body" for code execution.
@@ -46,6 +47,14 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [ ] **Public API**: Allow third-party developers to rent Randi containers via API.
 - [ ] **Progressive Web App (PWA)**: Mobile-optimized chat experience.
 - [ ] **Governance Interface**: Allow $RANDI holders to vote on new agent "Personalities" or "Tools."
+
+## 🛡️ Phase 6: UX REWRITE & RUNTIME RESILIENCE (In Progress)
+**Objective**: Decouple the "Brain" from the "Provisioner" to ensure users are never blocked.
+- [ ] **IA Overhaul**: Rename main entry to "Ask Randi", moved infra pages to "Operator" section.
+- [ ] **Async Provisioning**: Start chat immediately on shared runtime while dedicated containers spin up in background.
+- [ ] **Non-Blocking Badge**: UI indicator for runtime state (Starting/Active/Failed) with secondary fallback.
+- [ ] **Error Taxonomy**: Replace jargon with helpful, user-facing instructions and retry mechanisms.
+- [ ] **Provisioner Abstraction**: Implement `/api/runtimes/provision` as a single boundary for all compute backends.
 
 ---
 *Note: This is a living document and will be updated as the Randi ecosystem evolves.*

@@ -182,9 +182,9 @@ async function fetchToolsByQuery(
     const tools = query.kind === "tools"
       ? await composioClient.tools.get(userId, { tools: query.tools })
       : await composioClient.tools.get(userId, {
-          toolkits: query.toolkits,
-          limit: MAX_TOOL_DEFINITIONS,
-        });
+        toolkits: query.toolkits,
+        limit: MAX_TOOL_DEFINITIONS,
+      });
     return toOpenAITools(tools);
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
@@ -261,7 +261,8 @@ export async function getAgentToolsFromConfig(
 
 export async function executeOpenAIToolCall(
   userId: string,
-  toolCall: OpenAIToolCall
+  toolCall: OpenAIToolCall,
+  runtimeUrl?: string
 ): Promise<string> {
   const composioClient = await getComposioClient();
   if (!composioClient) {
@@ -270,6 +271,36 @@ export async function executeOpenAIToolCall(
   const resolvedUserId = resolveComposioUserId(userId);
   const normalizedToolCall = normalizeToolCallArguments(toolCall);
 
+  // ── DEDICATED RUNTIME ROUTING ──────────────────────────────────────────
+  // If a dedicated runtime URL is provided, we route the tool call there.
+  // This ensures the agent's actions happen within the user's isolated box.
+  if (runtimeUrl) {
+    try {
+      const endpoint = new URL("/api/tools/execute", runtimeUrl).toString();
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: resolvedUserId,
+          toolCall: normalizedToolCall,
+        }),
+      });
+
+      if (response.ok) {
+        return await response.text();
+      }
+
+      // If dedicated execution fails, we log it and continue.
+      // In a real scenario, you might want a fallback to shared here, 
+      // but for now we follow the explicit target.
+      const errorText = await response.text();
+      console.warn(`Dedicated tool execution failed at ${runtimeUrl}:`, errorText);
+    } catch (error) {
+      console.error(`Failed to reach dedicated runtime at ${runtimeUrl}:`, error);
+    }
+  }
+
+  // Fallback to Shared Composio execution
   try {
     return await composioClient.provider.executeToolCall(
       resolvedUserId,

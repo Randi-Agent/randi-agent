@@ -76,8 +76,8 @@ function IntegrationCard({
   return (
     <div
       className={`relative flex flex-col gap-3 p-4 rounded-xl border transition-all duration-200 ${isConnected
-          ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50"
-          : "border-border bg-card hover:border-border/80 hover:bg-card/80"
+        ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50"
+        : "border-border bg-card hover:border-border/80 hover:bg-card/80"
         }`}
     >
       {/* Icon + title */}
@@ -101,8 +101,8 @@ function IntegrationCard({
 
       {/* Auth config warning */}
       {!canConnect && (
-        <p className="text-[10px] text-amber-400/80 bg-amber-500/10 rounded-lg px-2.5 py-1.5">
-          ⚠️ No auth config in Composio dashboard yet. Configure it there first.
+        <p className="text-[10px] text-amber-400/80 bg-amber-500/10 rounded-lg px-2.5 py-1.5 font-medium">
+          Setup required. This integration isn't available yet. Check back soon.
         </p>
       )}
 
@@ -117,8 +117,8 @@ function IntegrationCard({
           onClick={() => onConnect(integration.slug)}
           disabled={isBusy || !canConnect}
           className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isConnected
-              ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-              : "bg-primary hover:bg-primary/90 text-white"
+            ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+            : "bg-primary hover:bg-primary/90 text-white"
             }`}
         >
           {isBusy ? "Working…" : isConnected ? "Reconnect" : "Connect"}
@@ -289,7 +289,7 @@ function IntegrationsPageContent() {
       )}
       {data?.sharedEntityMode && (
         <div className="text-sm text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
-          ⚠️ Shared entity mode — all users share these integrations.
+          ⚠️ Shared mode — connections are shared across all users.
         </div>
       )}
 
@@ -309,8 +309,8 @@ function IntegrationsPageContent() {
                 key={cat}
                 onClick={() => setActiveCategory(cat as ComposioCategory | "All")}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors ${activeCategory === cat
-                    ? "bg-primary text-white border-primary"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                  ? "bg-primary text-white border-primary"
+                  : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
                   }`}
               >
                 {cat}
@@ -345,11 +345,6 @@ function IntegrationsPageContent() {
         </div>
       )}
 
-      {data && (
-        <p className="text-[10px] text-muted-foreground">
-          Composio entity: <span className="font-mono">{data.composioUserId}</span>
-        </p>
-      )}
     </div>
   );
 }
