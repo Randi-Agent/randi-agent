@@ -141,7 +141,9 @@ export async function executeOrchestrationToolCall(
             { role: "system", content: agent.systemPrompt },
             {
                 role: "system",
-                content: "You have access to tools for external services. If the user's request requires a tool (e.g. GitHub, Slack, Gmail), call the matching tool. If a tool returns an error, explain the issue. For general knowledge, do NOT attempt to use tools. Never simulate tool results."
+                content: "You are acting on behalf of the Lead Orchestrator for the user's query: '" + subQuery + "'. " +
+                    "Use your tools (Gmail, Slack, etc.) to fulfill this request. If you retrieve data, PROVIDE A FULL SUMMARY OF IT. " +
+                    "If you get an error, explain what is wrong. Do not simulate results."
             },
             { role: "user", content: subQuery },
         ];

@@ -357,6 +357,7 @@ async function runToolEnabledChat(
   const toolCalls: ToolExecutionLog[] = [];
   const messages: ChatMessageParam[] = [...baseMessages];
   const fullTurnMessages: Array<{ role: string; content: string; toolCalls: string | null }> = [];
+  const callHistory = new Set<string>();
 
   // FIX (LOW): Enforce a hard timeout on the entire tool loop to prevent
   // runaway agent sessions. AbortSignal is passed to each LLM call.
@@ -442,14 +443,21 @@ async function runToolEnabledChat(
         // ── END APPROVAL GATE ─────────────────────────────────────────────────
 
         let rawResult: string;
-        if (isOrchestrationTool(toolCall.function.name)) {
-          const args = JSON.parse(toolCall.function.arguments);
-          rawResult = await executeOrchestrationToolCall(userId, toolCall.function.name, args, sessionId);
-        } else if (isClawnchTool(toolCall.function.name)) {
-          const args = JSON.parse(toolCall.function.arguments);
-          rawResult = await executeClawnchTool(toolCall.function.name, args);
+        const callSignature = `${toolCall.function.name}:${toolCall.function.arguments}`;
+        if (callHistory.has(callSignature)) {
+          console.warn(`[chat] Detected repeated tool call: ${callSignature}. Breaking loop.`);
+          rawResult = "ERROR: You have already attempted this exact tool call with these exact arguments in this turn. Do not repeat it. If you are stuck, summarize the situation and ask the user for clarification.";
         } else {
-          rawResult = await executeOpenAIToolCall(userId, toolCall, runtimeUrl);
+          callHistory.add(callSignature);
+          if (isOrchestrationTool(toolCall.function.name)) {
+            const args = JSON.parse(toolCall.function.arguments);
+            rawResult = await executeOrchestrationToolCall(userId, toolCall.function.name, args, sessionId);
+          } else if (isClawnchTool(toolCall.function.name)) {
+            const args = JSON.parse(toolCall.function.arguments);
+            rawResult = await executeClawnchTool(toolCall.function.name, args);
+          } else {
+            rawResult = await executeOpenAIToolCall(userId, toolCall, runtimeUrl);
+          }
         }
 
         if (rawResult.length > 15000) {
