@@ -52,6 +52,7 @@ const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
   cmc: "coinmarketcap",
   supabase_api: "supabase",
   vercel_api: "vercel",
+  telegram_api: "telegram",
 };
 
 interface ParsedAgentToolConfig {

@@ -87,12 +87,13 @@ const KNOWN_TOOL_PREFIXES = [
   "HACKERNEWS_",
   "COINMARKETCAP_",
   "PROMPMATE_",
+  "TELEGRAM_",
 ] as const;
 
 function shouldForceToolCall(message: string): boolean {
   const normalized = message.toLowerCase();
   const mentionsService =
-    /\b(github|git|repo|repository|slack|chat|notion|doc|page|gmail|email|mail|inbox|mailbox|google sheets|googlesheets|sheets|spreadsheet|excel|calendar|google calendar|gcal|supabase|db|database|vercel|deploy|hacker ?news|hn|prompmate|promptmate|coinmarketcap|coin market cap|cmc)\b/.test(
+    /\b(github|git|repo|repository|slack|chat|notion|doc|page|gmail|email|mail|inbox|mailbox|google sheets|googlesheets|sheets|spreadsheet|excel|calendar|google calendar|gcal|supabase|db|database|vercel|deploy|hacker ?news|hn|prompmate|promptmate|coinmarketcap|coin market cap|cmc|telegram|tg)\b/.test(
       normalized
     );
   const mentionsAction =
@@ -125,6 +126,9 @@ function getRequestedToolPrefixes(message: string): string[] {
   }
   if (/\b(prompmate|promptmate)\b/.test(normalized)) {
     prefixes.add("PROMPMATE_");
+  }
+  if (/\b(telegram|tg|message)\b/.test(normalized)) {
+    prefixes.add("TELEGRAM_");
   }
 
   return [...prefixes];
