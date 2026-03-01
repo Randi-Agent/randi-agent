@@ -122,7 +122,7 @@ export function Sidebar() {
         {priceUsd !== null && (
           <div className="px-3 py-2 bg-muted/50 rounded-lg">
             <a
-              href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+              href="https://pump.fun/coin/FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:opacity-80 transition-opacity"
@@ -133,7 +133,7 @@ export function Sidebar() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 
   return (

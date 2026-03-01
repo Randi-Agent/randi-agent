@@ -30,7 +30,7 @@ export default function CreditsPage() {
           Subscribe to Randi Pro for unlimited access
           {priceUsd && (
             <a
-              href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+              href="https://pump.fun/coin/FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-1 text-xs hover:text-primary transition-colors hover:underline underline-offset-4"
@@ -91,9 +91,9 @@ export default function CreditsPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${staking.stakingLevel === "GOLD" ? "bg-yellow-500/20 text-yellow-400" :
-                    staking.stakingLevel === "SILVER" ? "bg-gray-300/20 text-gray-300" :
-                      staking.stakingLevel === "BRONZE" ? "bg-amber-700/20 text-amber-600" :
-                        "bg-muted text-muted-foreground"
+                  staking.stakingLevel === "SILVER" ? "bg-gray-300/20 text-gray-300" :
+                    staking.stakingLevel === "BRONZE" ? "bg-amber-700/20 text-amber-600" :
+                      "bg-muted text-muted-foreground"
                   }`}>
                   {staking.stakingLevel === "NONE" ? "-" : staking.stakingLevel.charAt(0)}
                 </div>
@@ -158,7 +158,7 @@ export default function CreditsPage() {
             {/* Stake More Button */}
             {staking.stakingLevel !== "GOLD" && (
               <a
-                href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+                href="https://pump.fun/coin/FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center text-sm py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg transition-colors"

@@ -92,9 +92,9 @@ function DashboardContent() {
     alert("Profile link copied to clipboard!");
   };
 
-  const walletDisplay = user?.walletAddress
+  const displayName = username || (user?.walletAddress
     ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : "User";
+    : "User");
 
   const daysLeft = subscription.expiresAt
     ? Math.max(0, Math.ceil((new Date(subscription.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
@@ -105,7 +105,7 @@ function DashboardContent() {
       <div className="flex flex-col md:flex-row items-baseline justify-between gap-4 mb-10">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-gradient mb-2">
-            Welcome back, {walletDisplay}
+            Welcome back, {displayName}
           </h1>
           <p className="text-muted-foreground font-medium">
             Your command center for high-autonomy agents.
@@ -159,12 +159,15 @@ function DashboardContent() {
 
         {/* Model Access */}
         <div className="glass-card rounded-3xl p-8 transition-all hover:scale-[1.02]">
-          <p className="text-xs text-muted-foreground uppercase tracking-[0.2em] font-bold mb-4">AI Arsenal</p>
+          <div className="flex justify-between items-start mb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-[0.2em] font-bold">Free Arsenal</p>
+            <span className="text-[10px] text-primary/60 font-black italic">By Kilo Code</span>
+          </div>
           <div className="flex flex-col gap-4 mt-2">
             {[
-              { name: "Llama 3.3 70B", status: "Active" },
-              { name: "Gemini 2.0 Flash", status: "Active" },
-              { name: "DeepSeek R1", status: "Active" },
+              { name: "Llama 3.1 8B (Free)", status: "Active" },
+              { name: "DeepSeek R1 (Free)", status: "Active" },
+              { name: "Mistral 7B (Free)", status: "Active" },
             ].map((m) => (
               <div key={m.name} className="flex items-center justify-between group">
                 <span className="text-sm font-medium group-hover:text-primary transition-colors">{m.name}</span>
@@ -201,7 +204,7 @@ function DashboardContent() {
             </div>
           </div>
           <a
-            href="https://dexscreener.com/solana/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+            href="https://pump.fun/coin/FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump"
             target="_blank"
             rel="noreferrer"
             className="mt-8 block w-full text-center py-3 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm font-black transition-all shadow-lg shadow-primary/30 transform hover:-translate-y-1"

@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
                 symbol: "RANDI",
                 priceUsd: Number(cachedPrice.usd),
-                marketCap: roundUpTo1K(marketCap),
+                marketCap: marketCap,
                 burnPercent: 70,
                 cachedAt: cachedPrice.timestamp,
             });
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
                 symbol: "RANDI",
                 priceUsd: priceNum,
-                marketCap: roundUpTo1K(marketCap),
+                marketCap: marketCap,
                 burnPercent: 70,
                 cachedAt: now,
             });
