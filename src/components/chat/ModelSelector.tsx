@@ -83,15 +83,10 @@ export function ModelSelector({ selectedModel, onChange }: ModelSelectorProps) {
                                     <button
                                         key={model.id}
                                         onClick={() => {
-                                            if (isFree) {
-                                                onChange(model.id);
-                                                setIsOpen(false);
-                                            }
+                                            onChange(model.id);
+                                            setIsOpen(false);
                                         }}
-                                        disabled={!isFree}
-                                        className={`flex flex-col text-left px-3 py-2 rounded-lg transition-colors ${!isFree
-                                            ? 'opacity-40 cursor-not-allowed bg-card'
-                                            : isSelected
+                                        className={`flex flex-col text-left px-3 py-2 rounded-lg transition-colors ${isSelected
                                                 ? 'bg-primary/10 border border-primary/20'
                                                 : 'hover:bg-muted'
                                             }`}
@@ -100,21 +95,17 @@ export function ModelSelector({ selectedModel, onChange }: ModelSelectorProps) {
                                             <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : ''}`}>
                                                 {displayName}
                                             </span>
+                                            {isFree && (
+                                                <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 rounded uppercase ml-2">Free</span>
+                                            )}
                                             {isSelected && (
                                                 <svg className="w-4 h-4 text-primary shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                                {provider}
-                                            </span>
-                                            {isFree ? (
-                                                <span className="text-[10px] text-green-500 font-medium">Free</span>
-                                            ) : (
-                                                <span className="text-[10px] text-red-400 font-medium whitespace-nowrap overflow-hidden text-ellipsis">PRO (Disabled)</span>
-                                            )}
+                                        <div className="text-[10px] text-muted-foreground truncate opacity-70">
+                                            {provider}
                                         </div>
                                     </button>
                                 );
@@ -123,6 +114,6 @@ export function ModelSelector({ selectedModel, onChange }: ModelSelectorProps) {
                     </div>
                 </>
             )}
-        </div>
+        </div >
     );
 }
