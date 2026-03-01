@@ -10,7 +10,7 @@ export async function GET() {
             return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
         }
 
-        const baseUrl = kiloKey ? "https://api.kilo.ai/v1/models" : "https://openrouter.ai/api/v1/models";
+        const baseUrl = kiloKey ? "https://api.kilo.ai/api/gateway/models" : "https://openrouter.ai/api/v1/models";
 
         const response = await fetch(baseUrl, {
             headers: {
@@ -20,13 +20,20 @@ export async function GET() {
         });
 
         if (!response.ok) {
+            console.error(`[Models] Fetch failed: ${response.status} from ${baseUrl}`);
             throw new Error(`Failed to fetch models: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log(`[Models] Received data from ${kiloKey ? "Kilo" : "OpenRouter"}. Object type: ${data.object}, Items: ${data.data?.length}`);
 
         // OpenAI format usually returns { object: "list", data: [{ id: "model-id", ... }] }
-        const models = Array.isArray(data.data) ? data.data : [];
+        let models = Array.isArray(data.data) ? data.data : [];
+
+        // If it's a direct array (some custom gateways)
+        if (models.length === 0 && Array.isArray(data)) {
+            models = data;
+        }
 
         // Sort: Free models first, then alphabetical
         const sortedModels = models.sort((a: any, b: any) => {

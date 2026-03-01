@@ -56,7 +56,7 @@ const TOOL_LOOP_TIMEOUT_MS = 90_000; // 90 seconds
 import { KILO_COMPOSIO_CHEAT_SHEET } from "@/lib/skills/tool-cheat-sheet";
 
 const TOOL_USAGE_SYSTEM_INSTRUCTION =
-  "You have access to tools. For requests involving external services (GitHub, Slack, Notion, Gmail, Google Sheets, Google Calendar, Supabase, Vercel, Hacker News), call the best matching tool first before replying. CRITICAL: If a tool returns an error, DO NOT retry the exact same call. If you encounter multiple errors, STOP calling tools immediately and explain the issue to the user. Do not claim lack of access when tools are available. Never simulate or invent tool results.\n\n" + KILO_COMPOSIO_CHEAT_SHEET;
+  "You have access to tools for external services. If the user's request requires a tool (e.g. GitHub, Slack, Gmail), call the matching tool. If a tool returns an error, DO NOT retry the same call—explain the issue. For general knowledge or conversational requests, do NOT attempt to use tools. Never simulate tool results.\n\n" + KILO_COMPOSIO_CHEAT_SHEET;
 
 type ChatMessageParam = OpenAI.Chat.Completions.ChatCompletionMessageParam;
 type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
@@ -507,8 +507,16 @@ async function runToolEnabledChat(
     }
 
     clearTimeout(loopTimeoutId);
+
+    // If we have an accumulated response, return it even if we hit the loop limit
+    // Find the last assistant message content
+    const lastAssistantText = fullTurnMessages
+      .filter(m => m.role === "assistant")
+      .map(m => m.content)
+      .reverse()[0];
+
     return {
-      responseText: "I've reached the maximum number of tool steps for this request.",
+      responseText: lastAssistantText || "I've reached the maximum number of tool steps for this request.",
       toolCalls,
       pausedForApproval: false,
       fullTurnMessages
@@ -661,8 +669,13 @@ export async function POST(req: NextRequest) {
       composioTools,
       requestedToolPrefixes
     );
-    const toolsForRequest =
-      requestedToolPrefixes.length > 0 ? scopedTools : composioTools;
+
+    // FIX (HIGH): Do not pass all tools for general chat.
+    // If no specific service prefix is found and it doesn't look like a tool action,
+    // we use a much more conservative tool set to avoid model confusion.
+    const isToolRequest = requestedToolPrefixes.length > 0 || shouldForceToolCall(message);
+    const toolsForRequest = isToolRequest ? (requestedToolPrefixes.length > 0 ? scopedTools : composioTools) : [];
+
     const finalToolsForRequest = shouldPreferEmailTools(message)
       ? toolsForRequest.filter((tool) => tool.type === "function" && !tool.function.name.startsWith("GITHUB_"))
       : toolsForRequest;
