@@ -674,22 +674,24 @@ export async function POST(req: NextRequest) {
     // If no specific service prefix is found and it doesn't look like a tool action,
     // we use a much more conservative tool set to avoid model confusion.
     const isToolRequest = requestedToolPrefixes.length > 0 || shouldForceToolCall(message);
-    const toolsForRequest = isToolRequest ? (requestedToolPrefixes.length > 0 ? scopedTools : composioTools) : [];
 
-    const finalToolsForRequest = shouldPreferEmailTools(message)
-      ? toolsForRequest.filter((tool) => tool.type === "function" && !tool.function.name.startsWith("GITHUB_"))
-      : toolsForRequest;
+    // Base tools for this request (scoped by prefix if available)
+    let toolsForRequest = isToolRequest ? (requestedToolPrefixes.length > 0 ? scopedTools : composioTools) : [];
 
-    // ── SKILLS SYSTEM ─────────────────────────────────────────────────────────
-    // Parse the agent's configured skills from its tools JSON config.
-    // Knowledge skills are injected into the system prompt context.
-    // Action skills (e.g. clawnch) are registered as callable tools.
+    // Filter by preference (e.g. gmail over github)
+    if (shouldPreferEmailTools(message)) {
+      toolsForRequest = toolsForRequest.filter((tool) => tool.type === "function" && !tool.function.name.startsWith("GITHUB_"));
+    }
+
+    // ── SKILLS & ORCHESTRATION TOOLS ──────────────────────────────────────────
     const agentSkills = parseAgentSkills(agent.tools);
     const skillsContext = buildSkillsContext(agentSkills);
     const actionSkillNames = getActionSkills(agentSkills);
 
-    // Merge Orchestration Tools if agent config asks for them, BUT ONLY if this is a tool request.
-    let combinedTools = finalToolsForRequest;
+    let combinedTools = toolsForRequest;
+
+    // Orchestration tools are ALWAYS added to a tool request if the agent has them, 
+    // even if they don't match the service prefix (so we can delegate!)
     if (isToolRequest && agent.tools) {
       try {
         const parsedConfig = JSON.parse(agent.tools);
@@ -706,17 +708,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Merge Clawnch action tools if the agent has the clawnch skill AND this is a tool request.
+    // Merge Clawnch action tools if applicable
     if (isToolRequest && actionSkillNames.includes("clawnch")) {
       combinedTools = [...combinedTools, ...CLAWNCH_TOOLS];
     }
 
-    // Build the enriched system prompt with knowledge skill context appended
+    // Deduplicate tools by function name
+    const uniqueToolsMap = new Map();
+    combinedTools.forEach(t => {
+      if (t.type === 'function') uniqueToolsMap.set(t.function.name, t);
+    });
+    combinedTools = Array.from(uniqueToolsMap.values());
+
+    // Build the enriched system prompt
     const enrichedSystemPrompt = agent.systemPrompt + skillsContext;
 
+    // Use combinedTools to decide on instruction injection
     const messages: ChatMessageParam[] = [
       { role: "system", content: enrichedSystemPrompt },
-      ...(finalToolsForRequest.length > 0
+      ...(combinedTools.length > 0
         ? ([{ role: "system", content: TOOL_USAGE_SYSTEM_INSTRUCTION }] as ChatMessageParam[])
         : []),
       ...historyMessages,
@@ -724,7 +734,7 @@ export async function POST(req: NextRequest) {
     ];
 
     const forceFirstToolCall =
-      finalToolsForRequest.length > 0 && shouldForceToolCall(message);
+      combinedTools.length > 0 && shouldForceToolCall(message);
 
     const responseStream = new TransformStream<Uint8Array, Uint8Array>();
     const writer = responseStream.writable.getWriter();
