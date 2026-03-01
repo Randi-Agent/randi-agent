@@ -257,7 +257,13 @@ export async function getAgentToolsFromConfig(
     }
   }
 
-  return dedupeTools(collectedTools);
+  const finalTools = dedupeTools(collectedTools);
+  console.log(`[Composio] Collected ${finalTools.length} tools for user ${resolvedUserId}`);
+  if (finalTools.length > 0) {
+    const prefixes = new Set(finalTools.map(t => t.function.name.split('_')[0]));
+    console.log(`[Composio] Tools found for prefixes: ${Array.from(prefixes).join(', ')}`);
+  }
+  return finalTools;
 }
 
 export async function executeOpenAIToolCall(

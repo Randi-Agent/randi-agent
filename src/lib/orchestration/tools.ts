@@ -139,46 +139,50 @@ export async function executeOrchestrationToolCall(
 
         const messages: ChatMessageParam[] = [
             { role: "system", content: agent.systemPrompt },
+            {
+                role: "system",
+                content: "You have access to tools for external services. If the user's request requires a tool (e.g. GitHub, Slack, Gmail), call the matching tool. If a tool returns an error, explain the issue. For general knowledge, do NOT attempt to use tools. Never simulate tool results."
+            },
             { role: "user", content: subQuery },
         ];
 
         try {
-            // For orchestration, we'll do a one-shot tool-enabled call for the specialist
-            // To keep it simple and avoid deep recursion in one request, we'll allow 
-            // the specialist to use tools but we'll manage it here.
+            // Specialist Tool Loop
+            let currentMessages = [...messages];
+            let lastContent = "No response from specialist.";
 
-            const response = await createChatCompletion({
-                model: agent.defaultModel,
-                messages,
-                tools: specialistTools.length > 0 ? specialistTools : undefined,
-            });
-
-            const message = response.choices?.[0]?.message;
-            if (!message) return "No response from specialist.";
-
-            // If the specialist wants to call tools, we'll execute them and get the final answer
-            // Note: In a production system, you'd want a more robust loop here.
-            if (message.tool_calls && message.tool_calls.length > 0) {
-                const toolResults = await Promise.all(
-                    message.tool_calls.map(async (tc) => {
-                        let result = await executeOpenAIToolCall(userId, tc);
-                        // Truncate massive tool outputs to avoid crashing the model's context window
-                        if (result.length > 10000) {
-                            result = result.substring(0, 10000) + "... [Truncated for brevity]";
-                        }
-                        return { role: "tool" as const, tool_call_id: tc.id, content: result };
-                    })
-                );
-
-                const finalResponse = await createChatCompletion({
+            for (let i = 0; i < 5; i++) {
+                const response = await createChatCompletion({
                     model: agent.defaultModel,
-                    messages: [...messages, message, ...toolResults],
+                    messages: currentMessages,
+                    tools: specialistTools.length > 0 ? specialistTools : undefined,
                 });
 
-                return finalResponse.choices?.[0]?.message?.content || "Specialist completed task but returned no text.";
+                const assistantMessage = response.choices?.[0]?.message;
+                if (!assistantMessage) break;
+
+                currentMessages.push(assistantMessage as any);
+                lastContent = assistantMessage.content || lastContent;
+
+                if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+                    const toolResults = await Promise.all(
+                        assistantMessage.tool_calls.map(async (tc) => {
+                            let result = await executeOpenAIToolCall(userId, tc);
+                            if (result.length > 10000) {
+                                result = result.substring(0, 10000) + "... [Truncated]";
+                            }
+                            return { role: "tool" as const, tool_call_id: tc.id, content: result };
+                        })
+                    );
+                    currentMessages.push(...toolResults);
+                    continue;
+                }
+
+                // No tool calls, we are done
+                break;
             }
 
-            return message.content || "Specialist returned an empty response.";
+            return lastContent;
         } catch (error) {
             const msg = error instanceof Error ? error.message : "Orchestration failed";
             return JSON.stringify({ error: msg });
