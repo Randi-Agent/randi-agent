@@ -588,7 +588,9 @@ export async function POST(req: NextRequest) {
         user.subscriptionExpiresAt &&
         user.subscriptionExpiresAt > new Date();
 
-      if (!isSubscribed) {
+      const kiloKey = process.env.KILO_API_KEY;
+
+      if (!isSubscribed && !kiloKey) {
         // Check if this is a premium model that can be accessed via staking
         if (isPremiumModel(model)) {
           const userStakingLevel = (user?.stakingLevel || "NONE") as StakingLevel;
@@ -605,7 +607,6 @@ export async function POST(req: NextRequest) {
               { status: 403 }
             );
           }
-          // User has sufficient staking, allow access
         } else {
           return NextResponse.json(
             {
