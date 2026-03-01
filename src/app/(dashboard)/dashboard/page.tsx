@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useCredits } from "@/hooks/useCredits";
@@ -14,7 +14,7 @@ interface ChatSession {
   createdAt: string;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const { isSubscribed, subscription } = useCredits();
@@ -320,5 +320,23 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-6xl mx-auto px-4 py-10 animate-pulse">
+        <div className="h-10 w-64 bg-card rounded-lg mb-4"></div>
+        <div className="h-4 w-48 bg-card rounded-lg mb-10"></div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="h-40 bg-card rounded-3xl"></div>
+          <div className="h-40 bg-card rounded-3xl"></div>
+          <div className="h-40 bg-card rounded-3xl"></div>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
