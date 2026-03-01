@@ -590,10 +590,12 @@ export async function POST(req: NextRequest) {
 
       const kiloKey = process.env.KILO_API_KEY;
 
-      if (!isSubscribed && !kiloKey) {
-        // If it's not unmetered, and user isn't subscribed, and no kiloKey is set (owner mode)
-        // Check if it's a premium model that can be accessed via staking
-        if (isPremiumModel(model)) {
+      if (!isSubscribed) {
+        // If owner mode (kiloKey set), skip all premium/subscription checks
+        if (kiloKey) {
+          // Skip
+        } else if (isPremiumModel(model)) {
+          // Check if this is a premium model that can be accessed via staking
           const userStakingLevel = (user?.stakingLevel || "NONE") as StakingLevel;
           const accessCheck = validateModelAccess(model, userStakingLevel);
 
