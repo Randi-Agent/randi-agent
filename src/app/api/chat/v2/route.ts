@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai";
-import { streamText, tool, generateText, type ToolSet, type CoreMessage } from "ai";
+import { streamText, tool, generateText, type ToolSet, type ModelMessage } from "ai";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         });
 
         // 4. Load History
-        const history: CoreMessage[] = [];
+        const history: ModelMessage[] = [];
         if (existingSession) {
             const stored = await prisma.chatMessage.findMany({
                 where: { sessionId: existingSession.id },
