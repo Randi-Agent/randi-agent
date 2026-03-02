@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options";
+import { requireAuth, handleAuthError } from "@/lib/auth/middleware";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const auth = await requireAuth();
 
         const { token } = await req.json();
         if (!token) {
@@ -40,7 +36,7 @@ export async function POST(req: NextRequest) {
 
         // 3. Save to database
         await prisma.user.update({
-            where: { id: session.user.id },
+            where: { id: auth.userId },
             data: {
                 telegramBotToken: token,
                 telegramBotUsername: botUsername
@@ -49,7 +45,6 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ ok: true, botUsername });
     } catch (error) {
-        console.error("[Telegram Setup] Error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        return handleAuthError(error);
     }
 }
