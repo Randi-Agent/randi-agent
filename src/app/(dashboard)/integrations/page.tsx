@@ -138,7 +138,7 @@ function IntegrationCard({
 }
 
 function IntegrationsPageContent() {
-  const { isAuthenticated, sessionReady, sessionError, retrySessionSync } = useAuth();
+  const { isAuthenticated, loading: loadingAuth, sessionReady, sessionError, retrySessionSync } = useAuth();
   const searchParams = useSearchParams();
   const [data, setData] = useState<IntegrationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,9 +149,11 @@ function IntegrationsPageContent() {
 
   const load = useCallback(async () => {
     if (!isAuthenticated) {
-      setLoading(false);
-      setData(null);
-      setError("Unauthorized");
+      if (!loadingAuth) {
+        setLoading(false);
+        setData(null);
+        setError("Unauthorized");
+      }
       return;
     }
     if (!sessionReady) {
@@ -181,9 +183,11 @@ function IntegrationsPageContent() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setLoading(false);
-      setData(null);
-      setError("Unauthorized");
+      if (!loadingAuth) {
+        setLoading(false);
+        setData(null);
+        setError("Unauthorized");
+      }
       return;
     }
     if (!sessionReady) {
@@ -191,7 +195,7 @@ function IntegrationsPageContent() {
       return;
     }
     load().catch(() => { });
-  }, [isAuthenticated, sessionReady, load]);
+  }, [isAuthenticated, sessionReady, load, searchParams]);
 
   const callbackBanner = useMemo(() => {
     const status = searchParams.get("status");
