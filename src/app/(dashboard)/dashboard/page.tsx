@@ -165,9 +165,9 @@ function DashboardContent() {
           </div>
           <div className="flex flex-col gap-4 mt-2">
             {[
-              { name: "Llama 3.1 8B (Free)", status: "Active" },
+              { name: "GLM 5 (Free)", status: "Active" },
+              { name: "MiniMax 2.5 (Free)", status: "Active" },
               { name: "DeepSeek R1 (Free)", status: "Active" },
-              { name: "Mistral 7B (Free)", status: "Active" },
             ].map((m) => (
               <div key={m.name} className="flex items-center justify-between group">
                 <span className="text-sm font-medium group-hover:text-primary transition-colors">{m.name}</span>
@@ -175,7 +175,14 @@ function DashboardContent() {
               </div>
             ))}
           </div>
-          <div className="mt-8 pt-6 border-t border-border/50">
+          <div className="mt-6 p-3 bg-primary/5 rounded-xl border border-primary/10">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">Premium Compute</p>
+            <p className="text-[10px] leading-relaxed">
+              <span className="text-primary font-bold">Opus 4.6</span> & <span className="text-primary font-bold">Gemini 3.1</span>
+              <br />Available for on-demand usage fee.
+            </p>
+          </div>
+          <div className="mt-6 pt-5 border-t border-border/50">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs text-muted-foreground font-bold italic">Power Index</span>
               <span className="text-xs font-black">98.4%</span>
