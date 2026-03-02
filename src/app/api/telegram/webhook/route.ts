@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db/prisma";
 import { createChatCompletion } from "@/lib/openrouter/client";
 import { executeOrchestrationToolCall, ORCHESTRATION_TOOLS } from "@/lib/orchestration/tools";
 import { getAgentToolsFromConfig } from "@/lib/composio/client";
+import type OpenAI from "openai";
+
+type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
 
 // This is a simple webhook handler for Telegram.
 // In a production app, you'd want to verify the X-Telegram-Bot-Api-Secret-Token header.
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function processWithRandi(userId: string, agent: any, query: string, token: string) {
-    let tools = [];
+    let tools: ChatTool[] = [];
     if (agent.tools) {
         try {
             tools = await getAgentToolsFromConfig(agent.tools, userId);
