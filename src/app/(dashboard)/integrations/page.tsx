@@ -148,54 +148,45 @@ function IntegrationsPageContent() {
   const [activeCategory, setActiveCategory] = useState<ComposioCategory | "All">("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const load = useCallback(async () => {
-    if (!isAuthenticated) {
-      if (!loadingAuth) {
-        setLoading(false);
-        setData(null);
-        setError("Unauthorized");
-      }
-      return;
-    }
-    if (!sessionReady) {
-      setLoading(true);
-      return;
-    }
-    setLoading(true);
+  const load = useCallback(async (isInitial = false) => {
+    if (!isAuthenticated || !sessionReady) return;
+
+    if (isInitial) setLoading(true);
     setError(null);
+
     try {
       let response = await fetch("/api/composio/integrations", { cache: "no-store" });
       let payload = (await response.json()) as IntegrationsResponse & { error?: string };
+
       if (response.status === 401) {
         retrySessionSync();
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Short delay to allow session sync to attempt recovery
+        await new Promise((resolve) => setTimeout(resolve, 800));
         response = await fetch("/api/composio/integrations", { cache: "no-store" });
         payload = (await response.json()) as IntegrationsResponse & { error?: string };
       }
+
       if (!response.ok) throw new Error(payload.error || "Failed to load integrations");
       setData(payload);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Failed to load integrations");
-      setData(null);
+      // Don't clear data on error if we already have it
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, [isAuthenticated, sessionReady, retrySessionSync]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      if (!loadingAuth) {
+    if (!isAuthenticated || !sessionReady) {
+      if (!loadingAuth && !isAuthenticated) {
         setLoading(false);
-        setData(null);
         setError("Unauthorized");
       }
       return;
     }
-    if (!sessionReady) {
-      setLoading(true);
-      return;
-    }
-    load().catch(() => { });
+
+    // Initial load vs refresh
+    load(data === null).catch(() => { });
   }, [isAuthenticated, sessionReady, load, searchParams]);
 
   const callbackBanner = useMemo(() => {

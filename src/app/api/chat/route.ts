@@ -37,7 +37,8 @@ const MAX_STEPS = 10;
 const schema = z.object({
   agentId: z.string().optional(),
   sessionId: z.string().optional(),
-  message: z.string().min(1).max(4000),
+  message: z.string().max(4000).optional(),
+  messages: z.array(z.any()).optional(),
   model: z.string().min(1).default(DEFAULT_MODEL),
   resumeApprovalId: z.string().optional(),
 });
@@ -69,7 +70,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { agentId, sessionId, message, model, resumeApprovalId } = parsed.data;
+    const { agentId, sessionId, model, resumeApprovalId } = parsed.data;
+
+    // Extract message content from either 'message' or 'messages' array
+    let message = parsed.data.message || "";
+    if (!message && parsed.data.messages && parsed.data.messages.length > 0) {
+      const lastMsg = parsed.data.messages[parsed.data.messages.length - 1];
+      if (lastMsg.role === "user") {
+        if (typeof lastMsg.content === "string") {
+          message = lastMsg.content;
+        } else if (Array.isArray(lastMsg.parts)) {
+          message = lastMsg.parts
+            .filter((p: any) => p.type === "text")
+            .map((p: any) => p.text)
+            .join("");
+        }
+      }
+    }
+
+    if (!message && !resumeApprovalId) {
+      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    }
 
     // 1. Billing & Access Checks
     const resolvedModel = model || DEFAULT_MODEL;
