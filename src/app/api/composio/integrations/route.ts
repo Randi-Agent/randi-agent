@@ -10,7 +10,6 @@ import {
   getComposioSharedEntityOverride,
 } from "@/lib/composio/integrations";
 
-// Use the deduped list as the canonical reference
 const SUPPORTED_COMPOSIO_TOOLKITS = COMPOSIO_TOOLKITS_DEDUPED;
 
 interface ConnectedAccountSummary {
@@ -21,20 +20,13 @@ interface ConnectedAccountSummary {
 
 function statusRank(status: string): number {
   switch (status) {
-    case "ACTIVE":
-      return 5;
-    case "INITIATED":
-      return 4;
-    case "INITIALIZING":
-      return 3;
-    case "INACTIVE":
-      return 2;
-    case "EXPIRED":
-      return 1;
-    case "FAILED":
-      return 0;
-    default:
-      return -1;
+    case "ACTIVE": return 5;
+    case "INITIATED": return 4;
+    case "INITIALIZING": return 3;
+    case "INACTIVE": return 2;
+    case "EXPIRED": return 1;
+    case "FAILED": return 0;
+    default: return -1;
   }
 }
 
@@ -43,6 +35,45 @@ function pickPreferredAccount(accounts: ConnectedAccountSummary[]): ConnectedAcc
   return accounts.reduce((best, current) =>
     statusRank(current.status) > statusRank(best.status) ? current : best
   );
+}
+
+const curatedMap = new Map<string, any>(SUPPORTED_COMPOSIO_TOOLKITS.map(t => [t.slug, t]));
+
+function normalizeCategory(raw: string | null | undefined): string {
+  if (!raw) return "Other";
+  const cat = raw.toLowerCase().trim();
+
+  // Grouping logic
+  if (cat.includes("communication") || cat.includes("chat") || cat.includes("email") || cat.includes("video") || cat.includes("conferencing") || cat.includes("sms") || cat.includes("phone")) {
+    return "Communication";
+  }
+  if (cat.includes("productivity") || cat.includes("task") || cat.includes("project") || cat.includes("notes") || cat.includes("scheduling") || cat.includes("booking") || cat.includes("calendar")) {
+    return "Productivity";
+  }
+  if (cat.includes("dev") || cat.includes("code") || cat.includes("it operations") || cat.includes("monitoring") || cat.includes("server") || cat.includes("cloud")) {
+    return "Dev & Cloud";
+  }
+  if (cat.includes("data") || cat.includes("analytics") || cat.includes("database") || cat.includes("ai") || cat.includes("automation")) {
+    return "Data & AI";
+  }
+  if (cat.includes("sales") || cat.includes("marketing") || cat.includes("crm") || cat.includes("drip") || cat.includes("ecommerce") || cat.includes("commerce")) {
+    return "Sales & Marketing";
+  }
+  if (cat.includes("finance") || cat.includes("payment") || cat.includes("tax") || cat.includes("invoice") || cat.includes("accounting") || cat.includes("banking")) {
+    return "Finance";
+  }
+  if (cat.includes("design") || cat.includes("image") || cat.includes("video") || cat.includes("audio") || cat.includes("media") || cat.includes("transcription")) {
+    return "Creative & Media";
+  }
+  if (cat.includes("hr") || cat.includes("human resources") || cat.includes("recruitment") || cat.includes("education")) {
+    return "HR & Education";
+  }
+  if (cat.includes("security") || cat.includes("identity") || cat.includes("verifiable")) {
+    return "Security";
+  }
+
+  // Fallback to title case
+  return raw.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 }
 
 export async function GET() {
@@ -82,11 +113,8 @@ export async function GET() {
       accountsByToolkit.set(slug, existing);
     }
 
-    // 3. Merge with our curated metadata
-    const curatedMap = new Map(SUPPORTED_COMPOSIO_TOOLKITS.map(t => [t.slug, t]));
-
     // We'll also check auth configs for only the curated ones to avoid excessive API calls
-    const curatedSlugs = SUPPORTED_COMPOSIO_TOOLKITS.map(t => t.slug);
+    const curatedSlugs: string[] = SUPPORTED_COMPOSIO_TOOLKITS.map((t: any) => t.slug);
     const authConfigsPerToolkit = await Promise.all(
       curatedSlugs.map(async (slug) => {
         const overrideAuthConfigId = getComposioAuthConfigOverride(slug);
@@ -100,7 +128,7 @@ export async function GET() {
         }
       })
     );
-    const authConfigMap = new Map(authConfigsPerToolkit.map(e => [e.toolkit, e.selected]));
+    const authConfigMap = new Map<string, string | null>(authConfigsPerToolkit.map(e => [e.toolkit, e.selected]));
 
     interface Integration {
       slug: string;
@@ -125,7 +153,7 @@ export async function GET() {
       const authConfigId = authConfigMap.get(toolkit.slug);
 
       // Use curated metadata if available, otherwise fallback to Composio meta
-      const category = curated?.category || (toolkit.meta?.categories?.[0]?.name as any) || "Other";
+      const category = normalizeCategory(curated?.category || (toolkit.meta?.categories?.[0]?.name as any));
       const icon = curated?.icon || "🧩";
       const description = curated?.description || toolkit.meta?.description || `Integration for ${toolkit.name}`;
 
