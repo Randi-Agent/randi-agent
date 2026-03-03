@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { createChatCompletion } from "@/lib/openrouter/client";
 import { executeOrchestrationToolCall, ORCHESTRATION_TOOLS } from "@/lib/orchestration/tools";
-import { getAgentToolsFromConfig } from "@/lib/composio/client";
+import { getAgentToolsFromConfig, composioToolsToOpenAI } from "@/lib/composio/client";
 import type OpenAI from "openai";
 
 type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
@@ -89,7 +89,8 @@ async function processWithRandi(userId: string, agent: any, query: string, token
     let tools: ChatTool[] = [];
     if (agent.tools) {
         try {
-            tools = await getAgentToolsFromConfig(agent.tools, userId);
+            const composioTools = await getAgentToolsFromConfig(agent.tools, userId);
+            tools = composioToolsToOpenAI(composioTools);
         } catch (err) {
             console.warn("[Telegram] Failed to fetch tools", err);
         }

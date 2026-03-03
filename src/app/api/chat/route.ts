@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
       const composioTools = await getAgentToolsFromConfig(agent.tools, auth.userId);
       console.log(`[Chat] Composio returned ${composioTools.length} tools`);
       if (composioTools.length > 0) {
-        console.log(`[Chat] Tool names: ${composioTools.map((t: any) => t.function?.name).join(', ')}`);
+        console.log(`[Chat] Tool names: ${composioTools.map((t) => t.slug).join(', ')}`);
       }
       const activeRuntime = await prisma.container.findFirst({
         where: { userId: auth.userId, agentId: agent.id, expiresAt: { gt: new Date() } },
@@ -169,28 +169,19 @@ export async function POST(req: NextRequest) {
       });
 
       const vercelProvider = new VercelProvider();
-      const rawTools = (Array.isArray(composioTools) ? composioTools : [composioTools]).map((t: any) => ({
-        ...t,
-        slug: t.slug || t.function?.name || t.name,
-        name: t.name || t.function?.name || t.slug,
-        description: t.description || t.function?.description,
-        inputParameters: t.inputParameters || t.function?.parameters
-      }));
 
       const wrappedComposioTools = vercelProvider.wrapTools(
-        rawTools as any,
+        composioTools,
         async (toolSlug, args) => {
-          const toolCallId = `tcall_${Math.random().toString(36).substr(2, 9)}`;
-
-          // Approval Gate Check
+          // Approval Gate Check - use a unique separator that won't appear in JSON
           if (requiresApproval(toolSlug)) {
-            throw new Error(`APPROVAL_REQUIRED:${toolSlug}:${JSON.stringify(args)}`);
+            const argsStr = JSON.stringify(args);
+            throw new Error(`APPROVAL_REQUIRED${toolSlug}${argsStr}`);
           }
 
           const resultStr = await executeOpenAIToolCall(auth.userId, {
-            id: toolCallId,
-            type: 'function',
-            function: { name: toolSlug, arguments: JSON.stringify(args) }
+            name: toolSlug,
+            arguments: args,
           }, activeRuntime?.url || undefined);
 
           let parsed: Record<string, unknown>;
@@ -241,13 +232,9 @@ export async function POST(req: NextRequest) {
           content:
             approval.status === "APPROVED"
               ? await executeOpenAIToolCall(auth.userId, {
-                id: approval.toolCallId,
-                type: "function",
-                function: {
                   name: approval.toolName,
                   arguments: approval.toolArgs,
-                },
-              })
+                })
               : JSON.stringify({
                 error:
                   "User REJECTED this tool call. Do NOT attempt it again. Ask the user for alternative instructions.",
@@ -332,18 +319,28 @@ export async function POST(req: NextRequest) {
     console.error("Main Chat Route Error:", error);
 
     // Handle specialized Approval Signal
-    if (error.message?.startsWith("APPROVAL_REQUIRED:")) {
-      const [_, toolName, argsJson] = error.message.split(":");
-      // Since we're in an async flow, we might need a better way to send this 
-      // back to the client. For now, we'll return it as an error JSON 
-      // the frontend can parse, or a specialized stream chunk.
+    if (error.message?.startsWith("APPROVAL_REQUIRED")) {
+      const prefix = "APPROVAL_REQUIRED";
+      const afterPrefix = error.message.slice(prefix.length);
+      let toolName = "";
+      let argsJson = "{}";
+      
+      // Find where tool name ends (first { marks start of JSON args)
+      const jsonStart = afterPrefix.indexOf("{");
+      if (jsonStart !== -1) {
+        toolName = afterPrefix.slice(0, jsonStart);
+        argsJson = afterPrefix.slice(jsonStart);
+      } else {
+        toolName = afterPrefix;
+      }
+      
       return NextResponse.json({
         error: "Approval required",
         code: "APPROVAL_REQUIRED",
         toolName,
-        args: JSON.parse(argsJson),
+        args: JSON.parse(argsJson || "{}"),
         description: describeToolCall(toolName, argsJson)
-      }, { status: 202 }); // Accepted but not processed
+      }, { status: 202 });
     }
 
     return handleAuthError(error);

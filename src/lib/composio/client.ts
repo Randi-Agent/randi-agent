@@ -1,11 +1,32 @@
-import type { Composio as ComposioClient } from "@composio/core";
-import type OpenAI from "openai";
+import type { Composio as ComposioClient, Tool as ComposioTool } from "@composio/core";
 
 const apiKey = process.env.COMPOSIO_API_KEY?.trim() || "";
 const globalForComposio = globalThis as unknown as {
   composioClientPromise?: Promise<ComposioClient | null>;
 };
 let loggedMissingComposioApiKey = false;
+
+export type { ComposioTool };
+
+export interface OpenAITool {
+  type: "function";
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
+export function composioToolsToOpenAI(tools: ComposioTool[]): OpenAITool[] {
+  return tools.map((t) => ({
+    type: "function" as const,
+    function: {
+      name: t.slug,
+      description: t.description || "",
+      parameters: t.inputParameters,
+    },
+  }));
+}
 
 export async function getComposioClient(): Promise<ComposioClient | null> {
   if (!apiKey) {
@@ -30,9 +51,6 @@ export async function getComposioClient(): Promise<ComposioClient | null> {
 
   return globalForComposio.composioClientPromise;
 }
-
-type OpenAITool = OpenAI.Chat.Completions.ChatCompletionTool;
-type OpenAIToolCall = OpenAI.Chat.Completions.ChatCompletionMessageToolCall;
 
 const MAX_TOOL_DEFINITIONS = 50;
 const TOOL_SLUG_PATTERN = /^[A-Z0-9_]+$/;
@@ -208,27 +226,12 @@ function parseAgentToolConfig(
   };
 }
 
-function isOpenAITool(value: unknown): value is OpenAITool {
-  if (!isRecord(value) || value.type !== "function") return false;
-  const fn = value.function;
-  return isRecord(fn) && typeof fn.name === "string";
-}
-
-function toOpenAITools(value: unknown): OpenAITool[] {
-  if (Array.isArray(value)) {
-    return value.filter(isOpenAITool);
-  }
-
-  return isOpenAITool(value) ? [value] : [];
-}
-
-function dedupeTools(tools: OpenAITool[]): OpenAITool[] {
+function dedupeTools(tools: ComposioTool[]): ComposioTool[] {
   const seen = new Set<string>();
-  const deduped: OpenAITool[] = [];
+  const deduped: ComposioTool[] = [];
 
   for (const tool of tools) {
-    if (tool.type !== "function") continue;
-    const key = tool.function.name;
+    const key = tool.slug;
     if (seen.has(key)) continue;
     seen.add(key);
     deduped.push(tool);
@@ -243,17 +246,15 @@ type ComposioToolQuery =
 
 async function fetchToolsByQuery(
   composioClient: ComposioClient,
-  userId: string,
   query: ComposioToolQuery
-): Promise<OpenAITool[]> {
+): Promise<ComposioTool[]> {
   try {
     const tools = query.kind === "tools"
-      ? await composioClient.tools.get(userId, { tools: query.tools })
-      : await composioClient.tools.get(userId, {
+      ? await composioClient.tools.getRawComposioTools({ tools: query.tools })
+      : await composioClient.tools.getRawComposioTools({
         toolkits: query.toolkits,
-        limit: MAX_TOOL_DEFINITIONS,
       });
-    return toOpenAITools(tools);
+    return tools;
   } catch (error) {
     console.warn("[Composio] Tool query failed:", query, error);
     return [];
@@ -262,13 +263,11 @@ async function fetchToolsByQuery(
 
 async function fetchToolBySlug(
   composioClient: ComposioClient,
-  userId: string,
   slug: string
-): Promise<OpenAITool | null> {
+): Promise<ComposioTool | null> {
   try {
-    const tool = await composioClient.tools.get(userId, slug);
-    const wrappedTools = toOpenAITools(tool);
-    return wrappedTools[0] ?? null;
+    const tool = await composioClient.tools.getRawComposioToolBySlug(slug);
+    return tool ?? null;
   } catch {
     return null;
   }
@@ -277,7 +276,7 @@ async function fetchToolBySlug(
 export async function getAgentToolsFromConfig(
   rawConfig: string | null | undefined,
   userId: string
-): Promise<OpenAITool[]> {
+): Promise<ComposioTool[]> {
   const composioClient = await getComposioClient();
   if (!composioClient) return [];
   const resolvedUserId = resolveComposioUserId(userId);
@@ -291,11 +290,11 @@ export async function getAgentToolsFromConfig(
     return [];
   }
 
-  const collectedTools: OpenAITool[] = [];
+  const collectedTools: ComposioTool[] = [];
 
   if (parsed.explicitTools.length > 0) {
     collectedTools.push(
-      ...(await fetchToolsByQuery(composioClient, resolvedUserId, {
+      ...(await fetchToolsByQuery(composioClient, {
         kind: "tools",
         tools: parsed.explicitTools,
       }))
@@ -303,23 +302,19 @@ export async function getAgentToolsFromConfig(
   }
 
   if (parsed.toolkitHints.length > 0) {
-    // Fetch each toolkit SEPARATELY to prevent large toolkits (GitHub=100+)
-    // from crowding out smaller ones (Gmail, Calendar)
     const FALLBACK_LIMIT = 15;
     const toolkitResults = await Promise.all(
       parsed.toolkitHints.map(toolkit =>
-        fetchToolsByQuery(composioClient, resolvedUserId, {
+        fetchToolsByQuery(composioClient, {
           kind: "toolkits",
           toolkits: [toolkit],
         }).then(tools => {
           const allowlist = CURATED_TOOLKIT_TOOLS[toolkit];
-          let filtered: OpenAITool[];
+          let filtered: ComposioTool[];
           if (allowlist) {
-            // Only keep tools in the curated allowlist
             const allowSet = new Set(allowlist);
-            filtered = tools.filter((t: any) => {
-              const name = t.function?.name || t.name || '';
-              return allowSet.has(name);
+            filtered = tools.filter((t) => {
+              return allowSet.has(t.slug);
             });
             console.log(`[Composio] Toolkit "${toolkit}": ${tools.length} total, ${filtered.length} curated (allowlist: ${allowlist.length})`);
           } else {
@@ -339,7 +334,6 @@ export async function getAgentToolsFromConfig(
     for (const fallbackTool of parsed.fallbackTools) {
       const tool = await fetchToolBySlug(
         composioClient,
-        resolvedUserId,
         fallbackTool
       );
       if (tool) collectedTools.push(tool);
@@ -350,9 +344,7 @@ export async function getAgentToolsFromConfig(
   console.log(`[Composio] Collected ${finalTools.length} tools for user ${resolvedUserId}`);
   if (finalTools.length > 0) {
     const prefixes = new Set(
-      finalTools
-        .filter((t): t is any => t.type === 'function')
-        .map(t => t.function.name.split('_')[0])
+      finalTools.map(t => t.slug.split('_')[0])
     );
     console.log(`[Composio] Tools found for prefixes: ${Array.from(prefixes).join(', ')}`);
   }
@@ -361,7 +353,7 @@ export async function getAgentToolsFromConfig(
 
 export async function executeOpenAIToolCall(
   userId: string,
-  toolCall: OpenAIToolCall,
+  toolCall: { type?: string; function?: { name: string; arguments: string } } | { name: string; arguments: string | Record<string, unknown> },
   runtimeUrl?: string
 ): Promise<string> {
   const composioClient = await getComposioClient();
@@ -369,14 +361,27 @@ export async function executeOpenAIToolCall(
     return JSON.stringify({ error: "COMPOSIO_API_KEY is not configured." });
   }
   const resolvedUserId = resolveComposioUserId(userId);
-  if (toolCall.type !== "function") {
-    return JSON.stringify({ error: "Only function tool calls are supported." });
+
+  let toolName: string;
+  let toolArgs: Record<string, unknown>;
+
+  if ('function' in toolCall && toolCall.function) {
+    if (toolCall.type !== "function") {
+      return JSON.stringify({ error: "Only function tool calls are supported." });
+    }
+    const normalized = normalizeToolCallArgumentsJson(toolCall.function.arguments);
+    toolName = toolCall.function.name;
+    toolArgs = JSON.parse(normalized);
+  } else if ('name' in toolCall) {
+    toolName = toolCall.name;
+    toolArgs = typeof (toolCall as any).arguments === "string" 
+      ? JSON.parse((toolCall as any).arguments) 
+      : ((toolCall as any).arguments || {});
+  } else {
+    return JSON.stringify({ error: "Invalid tool call format" });
   }
-  const normalizedToolCall = normalizeToolCallArguments(toolCall);
 
   // ── DEDICATED RUNTIME ROUTING ──────────────────────────────────────────
-  // If a dedicated runtime URL is provided, we route the tool call there.
-  // This ensures the agent's actions happen within the user's isolated box.
   if (runtimeUrl) {
     try {
       const endpoint = new URL("/api/tools/execute", runtimeUrl).toString();
@@ -385,7 +390,8 @@ export async function executeOpenAIToolCall(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: resolvedUserId,
-          toolCall: normalizedToolCall,
+          toolName,
+          arguments: toolArgs,
         }),
       });
 
@@ -393,9 +399,6 @@ export async function executeOpenAIToolCall(
         return await response.text();
       }
 
-      // If dedicated execution fails, we log it and continue.
-      // In a real scenario, you might want a fallback to shared here, 
-      // but for now we follow the explicit target.
       const errorText = await response.text();
       console.warn(`Dedicated tool execution failed at ${runtimeUrl}:`, errorText);
     } catch (error) {
@@ -403,38 +406,27 @@ export async function executeOpenAIToolCall(
     }
   }
 
-  // Fallback to Shared Composio execution
+  // Fallback to Composio SDK execution
   try {
-    return await composioClient.provider.executeToolCall(
-      resolvedUserId,
-      normalizedToolCall as OpenAI.Chat.Completions.ChatCompletionMessageFunctionToolCall
-    );
+    console.log(`[Composio] Executing tool: ${toolName} for entity: ${resolvedUserId}`);
+
+    const result = await composioClient.tools.execute(toolName, {
+      userId: resolvedUserId,
+      arguments: toolArgs,
+      dangerouslySkipVersionCheck: true,
+    });
+
+    console.log(`[Composio] Tool ${toolName} executed successfully`);
+    return JSON.stringify(result);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Tool execution failed";
+    console.error(`[Composio] Tool execution error for ${toolName}:`, message);
     return JSON.stringify({
       error: message,
-      tool: toolCall.function.name,
+      tool: toolName,
     });
   }
-}
-
-function normalizeToolCallArguments(toolCall: OpenAIToolCall): OpenAIToolCall {
-  if (toolCall.type !== "function") return toolCall;
-
-  const normalizedArguments = normalizeToolCallArgumentsJson(
-    toolCall.function.arguments
-  );
-
-  if (normalizedArguments === toolCall.function.arguments) return toolCall;
-
-  return {
-    ...toolCall,
-    function: {
-      ...toolCall.function,
-      arguments: normalizedArguments,
-    },
-  };
 }
 
 function normalizeToolCallArgumentsJson(rawArgs: unknown): string {

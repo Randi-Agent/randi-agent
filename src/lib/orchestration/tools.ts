@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { openrouter, createChatCompletion } from "@/lib/openrouter/client";
-import { getAgentToolsFromConfig, executeOpenAIToolCall } from "@/lib/composio/client";
+import { getAgentToolsFromConfig, executeOpenAIToolCall, composioToolsToOpenAI } from "@/lib/composio/client";
 import { SkillManager } from "@/lib/skills/manager";
 import { deductForAgentCall } from "@/lib/credits/engine";
 import type OpenAI from "openai";
@@ -132,7 +132,8 @@ export async function executeOrchestrationToolCall(
         let specialistTools: ChatTool[] = [];
         if (agent.tools) {
             try {
-                specialistTools = await getAgentToolsFromConfig(agent.tools, userId);
+                const composioTools = await getAgentToolsFromConfig(agent.tools, userId);
+                specialistTools = composioToolsToOpenAI(composioTools);
             } catch (err) {
                 console.warn(`Failed to fetch tools for specialist ${specialistSlug}`, err);
             }
