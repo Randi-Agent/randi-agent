@@ -1,4 +1,4 @@
-import { createUIMessageStream, createUIMessageStreamResponse, type ToolSet, type ModelMessage } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, generateId, type ToolSet, type ModelMessage } from "ai";
 import { createChatCompletion } from "@/lib/openrouter/client";
 import { prisma } from "@/lib/db/prisma";
 
@@ -21,6 +21,7 @@ export async function handleNonStandardChat({
 }) {
     const stream = createUIMessageStream({
         execute: async ({ writer }) => {
+            const responseId = generateId();
             let currentHistory: any[] = [
                 ...history,
                 { role: "user", content: message },
@@ -31,7 +32,7 @@ export async function handleNonStandardChat({
             const MAX_RESILIENCE_STEPS = 10;
 
             // In SDK v6, we write parts to the stream
-            writer.write({ type: "text", text: "" }); // Start message
+            writer.write({ type: "text-start", id: responseId });
 
             while (iterations < MAX_RESILIENCE_STEPS) {
                 iterations++;
@@ -58,7 +59,7 @@ export async function handleNonStandardChat({
 
                 if (assistantMsg.content) {
                     lastText = assistantMsg.content;
-                    writer.write({ type: "text", text: assistantMsg.content });
+                    writer.write({ type: "text-delta", id: responseId, delta: assistantMsg.content });
                 }
 
                 if (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0) {
@@ -100,6 +101,8 @@ export async function handleNonStandardChat({
                     break;
                 }
             }
+
+            writer.write({ type: "text-end", id: responseId });
 
             // Final persistence
             let currentSessionId = sessionId;
