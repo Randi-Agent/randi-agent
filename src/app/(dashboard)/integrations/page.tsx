@@ -9,14 +9,12 @@ import { TelegramSetup } from "@/components/settings/TelegramSetup";
 interface IntegrationItem {
   slug: string;
   label: string;
-  category: ComposioCategory;
+  category: string;
   icon: string;
+  logo: string | null;
   description: string;
   hasAuthConfig: boolean;
   authConfigId: string | null;
-  authConfigName: string | null;
-  authConfigCount: number | null;
-  authConfigError: string | null;
   connectedAccountId: string | null;
   connectedStatus: string;
   connectedStatusReason: string | null;
@@ -81,13 +79,16 @@ function IntegrationCard({
         : "border-border bg-card hover:border-border/80 hover:bg-card/80"
         }`}
     >
-      {/* Icon + title */}
       <div className="flex items-start gap-3">
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${isConnected ? "bg-emerald-500/15" : "bg-muted/60"
+          className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden ${isConnected ? "bg-emerald-500/15" : "bg-muted/60"
             }`}
         >
-          {integration.icon}
+          {integration.logo ? (
+            <img src={integration.logo} alt="" className="w-full h-full object-contain p-1.5" />
+          ) : (
+            integration.icon
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -145,7 +146,7 @@ function IntegrationsPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyToolkit, setBusyToolkit] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<ComposioCategory | "All">("All");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async (isInitial = false) => {
@@ -250,6 +251,20 @@ function IntegrationsPageContent() {
     [data]
   );
 
+  const categories = useMemo(() => {
+    if (!data) return ["All"];
+    const cats = new Set<string>(["All"]);
+    data.integrations.forEach(i => {
+      if (i.category) cats.add(i.category);
+    });
+    // Sort so curated categories come first if they exist, then alphabetical
+    return Array.from(cats).sort((a, b) => {
+      if (a === "All") return -1;
+      if (b === "All") return 1;
+      return a.localeCompare(b);
+    });
+  }, [data]);
+
   return (
     <div className="max-w-5xl space-y-6">
       {/* Header */}
@@ -298,10 +313,10 @@ function IntegrationsPageContent() {
             className="w-full px-4 py-2 text-sm rounded-xl bg-muted border border-border focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap gap-2">
-            {(["All", ...COMPOSIO_CATEGORIES] as const).map((cat) => (
+            {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat as ComposioCategory | "All")}
+                onClick={() => setActiveCategory(cat)}
                 className={`px-3 py-1 text-xs rounded-full border transition-colors ${activeCategory === cat
                   ? "bg-primary text-white border-primary"
                   : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"

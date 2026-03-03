@@ -332,9 +332,13 @@ export function MessageBubble({
                             </ReactMarkdown>
                         )}
 
-                        {/* Streaming cursor at the very end when content is empty / first chunk */}
-                        {isStreaming && message.content === "" && (!message.parts || message.parts.length === 0) && (
-                            <span className="inline-block w-0.5 h-4 bg-white/70 animate-pulse align-middle" />
+                        {/* Improved thinking/streaming indicator */}
+                        {isStreaming && !fullText && (!message.parts || message.parts.every(p => p.type !== 'tool-invocation')) && (
+                            <div className="flex gap-1 py-1">
+                                <span className="w-1 h-1 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                <span className="w-1 h-1 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                <span className="w-1 h-1 bg-foreground/40 rounded-full animate-bounce"></span>
+                            </div>
                         )}
                     </div>
                 )}
