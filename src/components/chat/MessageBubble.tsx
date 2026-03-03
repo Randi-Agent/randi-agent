@@ -288,7 +288,10 @@ export function MessageBubble({
                     }`}
             >
                 {isUser ? (
-                    message.content
+                    message.content || (message.parts && message.parts
+                        .filter(p => p.type === "text")
+                        .map(p => p.text)
+                        .join(""))
                 ) : (
                     <div className="text-sm leading-relaxed space-y-2">
                         {message.parts && message.parts.length > 0 ? (

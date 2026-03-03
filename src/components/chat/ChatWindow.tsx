@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useMemo } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useRef, useEffect, useCallback, useMemo, useState } from "react";
+import { useChat, Chat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import type { ApprovalDecision } from "./ApprovalCard";
@@ -17,6 +18,7 @@ export interface Message {
     toolResults?: any;
     approvalRequest?: any;
     approvalDecision?: ApprovalDecision;
+    parts?: any[];
 }
 
 interface ChatWindowProps {
@@ -35,9 +37,21 @@ export function ChatWindow({
     onSessionCreated,
 }: ChatWindowProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
 
-    // Initial message normalization to match SDK's expectation if needed
-    // However, useChat usually expects UIMessages.
+    // Build the transport and chat object
+    const chat = useMemo(() => new Chat({
+        transport: new DefaultChatTransport({
+            api: "/api/chat",
+            body: {
+                agentId,
+                sessionId,
+                model,
+            },
+        }),
+    }), [agentId, sessionId, model]);
+
+    // Initial message normalization
     const normalizedInitialMessages = useMemo(() => {
         return initialMessages.map(m => ({
             id: m.id,
@@ -49,32 +63,21 @@ export function ChatWindow({
 
     const {
         messages,
-        input,
-        setInput,
-        append,
-        isLoading,
-        error: chatError,
+        sendMessage,
+        status,
         reload,
+        error: chatError,
     } = useChat({
-        api: "/api/chat",
-        body: {
-            agentId,
-            sessionId,
-            model,
-        },
+        chat,
         initialMessages: normalizedInitialMessages as any,
         onResponse: (response) => {
-            // Check if this was an approval request (202 status)
             if (response.status === 202) {
-                // We'll handle this in the setMessages/onFinish logic if needed
-                // But for now, the SDK might not handle 202 JSON response well during a stream.
+                // Potential approval gate signal
             }
         },
-        onFinish: (message) => {
-            // If the backend created a new session, it would typically be in a header
-            // but for Randi we might rely on the sessionId prop updating from the parent.
-        }
     });
+
+    const isLoading = status === "streaming" || status === "submitted";
 
     // Auto-scroll
     useEffect(() => {
@@ -84,29 +87,35 @@ export function ChatWindow({
     }, [messages]);
 
     const handleSendMessage = useCallback(async (content: string) => {
-        if (!content.trim()) return;
-        await append({
-            role: "user",
-            content,
-        });
-    }, [append]);
+        if (!content.trim() || isLoading) return;
+        setLocalError(null);
+
+        try {
+            await sendMessage({
+                role: "user",
+                parts: [{ type: "text", text: content }],
+            });
+        } catch (err) {
+            console.error("SendMessage error:", err);
+            setLocalError(err instanceof Error ? err.message : "Failed to send message");
+        }
+    }, [sendMessage, isLoading]);
 
     const handleApprovalDecision = useCallback(async (approvalId: string, decision: ApprovalDecision) => {
-        // Find the user message associated with this flow to resume it
-        const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
-
-        // Optimistically update the UI to show decision
-        // In a real app, we'd probably want the SDK to handle this, but for HITL resume:
+        // Resume flow logic
         if (decision === "APPROVED" || decision === "REJECTED") {
-            // Resume by sending a special signal or just the approvalId
-            await append({
-                role: "user",
-                content: lastUserMessage?.content || "Resume",
-            }, {
-                data: { resumeApprovalId: approvalId, decision } as any
-            });
+            try {
+                await sendMessage({
+                    role: "user",
+                    parts: [{ type: "text", text: "(Resume)" }],
+                }, {
+                    data: { resumeApprovalId: approvalId, decision } as any
+                });
+            } catch (err) {
+                console.error("Approval flow error:", err);
+            }
         }
-    }, [messages, append]);
+    }, [sendMessage]);
 
     return (
         <div className="flex flex-col h-full bg-card/30 rounded-xl border border-border overflow-hidden">
@@ -135,7 +144,7 @@ export function ChatWindow({
                             ...msg,
                             createdAt: msg.createdAt || new Date(),
                         } as any}
-                        isStreaming={isLoading && msg.id === messages[messages.length - 1].id && msg.role === "assistant"}
+                        isStreaming={status === "streaming" && msg.id === messages[messages.length - 1].id && msg.role === "assistant"}
                         onApprovalDecision={handleApprovalDecision}
                     />
                 ))}
@@ -154,9 +163,9 @@ export function ChatWindow({
             </div>
 
             <div className="p-4 border-t border-border bg-card/50">
-                {chatError && (
+                {(chatError || localError) && (
                     <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2">
-                        <p className="text-sm text-rose-400">{chatError.message || "An error occurred"}</p>
+                        <p className="text-sm text-rose-400">{(chatError as any)?.message || localError || "An error occurred"}</p>
                         <button
                             onClick={() => reload()}
                             className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 px-2 py-1 rounded transition-colors whitespace-nowrap"
