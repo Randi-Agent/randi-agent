@@ -105,7 +105,7 @@ export function PurchaseForm() {
       <div className="p-6">
         <h3 className="text-xl font-bold mb-4">Deposit $RANDI</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Fund your account to use AI agents. 70% of every call is burned 🔥
+          Fund your account to use AI agents. 70% of every deposit is burned 🔥
         </p>
 
         {loadingPackages ? (
@@ -163,7 +163,7 @@ export function PurchaseForm() {
               <span className="text-xs font-bold uppercase tracking-wider">Burn Flywheel</span>
             </div>
             <p className="text-[11px] text-muted-foreground mb-2">
-              By depositing, you're fueling the $RANDI deflationary cycle. Using these tokens will burn approximately
+              By depositing, you're fueling the $RANDI deflationary cycle. This deposit will automatically burn
               <span className="text-orange-400 font-bold mx-1">{estimatedBurn.toLocaleString()} $RANDI</span>
               permanently.
             </p>

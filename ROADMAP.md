@@ -25,9 +25,9 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 **Objective**: Integrate the $RANDI token deeply into the platform's DNA.
 - [x] **On-Chain Verification**: Robust Solana transaction scanning for credit top-ups.
 - [x] **x402 Protocol Integration**: Initial implementation of the x402 payment standard for premium AI model access.
-- [x] **Automated Burn Mechanics**: Real-time $RANDI burning on every agent call. [View Burn Schedule](/BURN_SCHEDULE.md)
-- [x] **Burn-to-Use 2.0**: Replaced old credit packs with direct $RANDI usage and 70% ignition burn.
-- [x] **Staking Discounts**: 15-50% off agent calls for token stakers.
+- [x] **Automated Burn Mechanics**: Real-time $RANDI burning on credit deposits (70% burn).
+- [x] **Passive Staking Yield**: Stakers earn up to 200,000 daily platform credits.
+- [x] **Credit Subscriptions**: Monthly $RANDI credit subscriptions for power users.
 - [ ] **Referral System**: Token-based incentives for user growth. (Planned for Phase 2 Growth)
 
 ## 🧠 Phase 4: Advanced Intelligence & UI
@@ -57,4 +57,3 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 
 ---
 *Note: This is a living document and will be updated as the Randi ecosystem evolves.*
-

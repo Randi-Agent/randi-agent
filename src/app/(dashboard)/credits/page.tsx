@@ -132,26 +132,49 @@ export default function CreditsPage() {
 
             {/* Tier Info */}
             <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-border">
-              <div className={`p-2 rounded-lg ${staking.stakingLevel === "BRONZE" || staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-amber-700/10" : "bg-muted/50"}`}>
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "BRONZE" || staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-amber-700/10 ring-1 ring-amber-700/30" : "bg-muted/50"}`}>
                 <p className="text-xs text-muted-foreground">Bronze</p>
-                <p className="text-sm font-medium">1K</p>
+                <p className="text-sm font-medium">1K Staked</p>
+                <p className="text-[10px] text-success font-medium mt-1">+1K credits/day</p>
               </div>
-              <div className={`p-2 rounded-lg ${staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-gray-300/10" : "bg-muted/50"}`}>
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "SILVER" || staking.stakingLevel === "GOLD" ? "bg-gray-300/10 ring-1 ring-gray-300/30" : "bg-muted/50"}`}>
                 <p className="text-xs text-muted-foreground">Silver</p>
-                <p className="text-sm font-medium">10K</p>
+                <p className="text-sm font-medium">10K Staked</p>
+                <p className="text-[10px] text-success font-medium mt-1">+15K credits/day</p>
               </div>
-              <div className={`p-2 rounded-lg ${staking.stakingLevel === "GOLD" ? "bg-yellow-500/10" : "bg-muted/50"}`}>
+              <div className={`p-2 rounded-lg ${staking.stakingLevel === "GOLD" ? "bg-yellow-500/10 ring-1 ring-yellow-500/30" : "bg-muted/50"}`}>
                 <p className="text-xs text-muted-foreground">Gold</p>
-                <p className="text-sm font-medium">100K</p>
+                <p className="text-sm font-medium">100K Staked</p>
+                <p className="text-[10px] text-success font-medium mt-1">+200K credits/day</p>
               </div>
             </div>
 
-            {/* Premium Models Info */}
+            {/* Staking Benefits Info */}
             {staking.stakingLevel !== "NONE" && (
-              <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
-                <p className="font-medium text-foreground mb-1">Premium Models Unlocked:</p>
-                <p>• o1, o1-mini, Claude 3.5 Sonnet (Silver+)</p>
-                {staking.stakingLevel === "GOLD" && <p>• o1-pro (Gold exclusive)</p>}
+              <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg space-y-3 border border-border/50">
+                <div>
+                  <p className="font-medium text-foreground mb-1 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    Daily Passive Yield:
+                  </p>
+                  <p className="text-success font-medium pl-5">
+                    +{staking.stakingLevel === "GOLD" ? "200,000" : staking.stakingLevel === "SILVER" ? "15,000" : "1,000"} Credits / Day
+                  </p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground mb-1 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Premium Models Unlocked:
+                  </p>
+                  <div className="pl-5 space-y-0.5">
+                    <p>• o1, o1-mini, Claude 3.5 Sonnet (Silver+)</p>
+                    {staking.stakingLevel === "GOLD" && <p>• o1-pro (Gold exclusive)</p>}
+                  </div>
+                </div>
               </div>
             )}
 
