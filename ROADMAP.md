@@ -29,6 +29,8 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [x] **Passive Staking Yield**: Stakers earn up to 200,000 daily platform credits.
 - [x] **Credit Subscriptions**: Monthly $RANDI credit subscriptions for power users.
 - [ ] **Referral System**: Token-based incentives for user growth. (Planned for Phase 2 Growth)
+- [ ] **AgentCard Integration**: Issue virtual cards for agents to pay for API/cloud services. (Next Step)
+- [ ] **Gasless Transactions**: Leverage Alchemy Agentic Gateway so Randi can sign transactions without user ETH.
 
 ## 🧠 Phase 4: Advanced Intelligence & UI
 **Objective**: Transform from simple chat to complex agentic workflows.
@@ -54,6 +56,13 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [x] **Async Provisioning**: Start chat immediately on shared runtime while dedicated containers spin up in background.
 - [x] **Non-Blocking Badge**: UI indicator for runtime state (Starting/Active/Failed).
 - [x] **Provisioner Abstraction**: Implement `/api/runtimes/provision` as a single boundary for all compute backends.
+
+## 👑 Phase 7: The Sovereign Agent (Vision)
+**Objective**: Transform from a chatbot to a fully autonomous, self-funded identity.
+- [ ] **Brand Growth Pack**: Autonomous X and Farcaster monitoring/engagement skills.
+- [ ] **Infinite Memory Vault**: Persistent, personalized RAG storage for every user.
+- [ ] **Agent Swarms**: Multi-agent orchestration (PM -> Developer -> Tester) for complex builds.
+- [ ] **Commercial Autonomy**: Shopify and Stripe skills to let Randi manage storefronts and refunds.
 
 ---
 *Note: This is a living document and will be updated as the Randi ecosystem evolves.*
