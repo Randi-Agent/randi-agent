@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { useChat, Chat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, UIMessage } from "ai";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
 import type { ApprovalDecision } from "./ApprovalCard";
@@ -39,8 +39,19 @@ export function ChatWindow({
     const scrollRef = useRef<HTMLDivElement>(null);
     const [localError, setLocalError] = useState<string | null>(null);
 
+    // Transform initial messages to SDK v6 format
+    const transformedInitialMessages = useMemo(() => {
+        return initialMessages.map(m => ({
+            id: m.id,
+            role: (m.role === "tool" ? "assistant" : m.role) as "user" | "assistant" | "system",
+            parts: m.parts || [{ type: "text", text: m.content }],
+            metadata: { createdAt: m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt) }
+        }));
+    }, [initialMessages]);
+
     // Build the transport and chat object
     const chat = useMemo(() => new Chat({
+        messages: transformedInitialMessages as any,
         transport: new DefaultChatTransport({
             api: "/api/chat",
             body: {
@@ -49,32 +60,16 @@ export function ChatWindow({
                 model,
             },
         }),
-    }), [agentId, sessionId, model]);
-
-    // Initial message normalization
-    const normalizedInitialMessages = useMemo(() => {
-        return initialMessages.map(m => ({
-            id: m.id,
-            role: m.role as "user" | "assistant" | "system",
-            content: m.content,
-            createdAt: m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt),
-        }));
-    }, [initialMessages]);
+    }), [agentId, sessionId, model, transformedInitialMessages]);
 
     const {
         messages,
         sendMessage,
         status,
-        reload,
+        regenerate,
         error: chatError,
     } = useChat({
         chat,
-        initialMessages: normalizedInitialMessages as any,
-        onResponse: (response) => {
-            if (response.status === 202) {
-                // Potential approval gate signal
-            }
-        },
     });
 
     const isLoading = status === "streaming" || status === "submitted";
@@ -102,14 +97,14 @@ export function ChatWindow({
     }, [sendMessage, isLoading]);
 
     const handleApprovalDecision = useCallback(async (approvalId: string, decision: ApprovalDecision) => {
-        // Resume flow logic
         if (decision === "APPROVED" || decision === "REJECTED") {
             try {
+                // In v6, additional data is passed in the body option of ChatRequestOptions
                 await sendMessage({
                     role: "user",
                     parts: [{ type: "text", text: "(Resume)" }],
                 }, {
-                    data: { resumeApprovalId: approvalId, decision } as any
+                    body: { resumeApprovalId: approvalId, decision }
                 });
             } catch (err) {
                 console.error("Approval flow error:", err);
@@ -142,7 +137,7 @@ export function ChatWindow({
                         key={msg.id}
                         message={{
                             ...msg,
-                            createdAt: msg.createdAt || new Date(),
+                            createdAt: (msg as any).metadata?.createdAt || new Date(),
                         } as any}
                         isStreaming={status === "streaming" && msg.id === messages[messages.length - 1].id && msg.role === "assistant"}
                         onApprovalDecision={handleApprovalDecision}
@@ -167,7 +162,7 @@ export function ChatWindow({
                     <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2">
                         <p className="text-sm text-rose-400">{(chatError as any)?.message || localError || "An error occurred"}</p>
                         <button
-                            onClick={() => reload()}
+                            onClick={() => regenerate()}
                             className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 px-2 py-1 rounded transition-colors whitespace-nowrap"
                         >
                             Retry

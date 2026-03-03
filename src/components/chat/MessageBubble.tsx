@@ -268,15 +268,26 @@ export function MessageBubble({
         ? null
         : messageDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+    const fullText = useMemo(() => {
+        if (message.content) return message.content;
+        if (message.parts) {
+            return message.parts
+                .filter(p => p.type === 'text')
+                .map(p => p.text)
+                .join("");
+        }
+        return "";
+    }, [message.content, message.parts]);
+
     const handleCopy = useCallback(async () => {
         try {
-            await navigator.clipboard.writeText(message.content);
+            await navigator.clipboard.writeText(fullText);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
             // clipboard API may not be available
         }
-    }, [message.content]);
+    }, [fullText]);
 
     return (
         <div className={`group flex ${isUser ? "justify-end" : "justify-start"}`}>
