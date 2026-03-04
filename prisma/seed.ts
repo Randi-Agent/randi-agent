@@ -124,7 +124,7 @@ async function main() {
   ].join("\n");
 
   const leadTools = JSON.stringify({
-    toolkits: ["googlecalendar", "slack", "notion", "gmail", "prompmate", "hackernews", "coinmarketcap", "github"],
+    toolkits: ["googlecalendar", "slack", "notion", "gmail", "prompmate", "hackernews", "coinmarketcap", "github", "telegram"],
     tools: ["delegate_to_specialist", "spawn_autonomous_developer", "browse_web", "list_available_skills", "load_skill_context"],
   });
 

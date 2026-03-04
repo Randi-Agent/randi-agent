@@ -133,6 +133,13 @@ const CURATED_TOOLKIT_TOOLS: Record<string, string[]> = {
     "COINMARKETCAP_TOOLS_PRICE_CONVERSION",
     "COINMARKETCAP_GET_KEY_INFO",
   ],
+  telegram: [
+    "TELEGRAM_SEND_MESSAGE",
+    "TELEGRAM_GET_ME",
+    "TELEGRAM_LIST_CHATS",
+    "TELEGRAM_GET_CHAT",
+    "TELEGRAM_EDIT_MESSAGE_TEXT",
+  ],
 };
 
 const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
