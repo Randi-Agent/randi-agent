@@ -67,9 +67,7 @@ next-env.d.ts
 .agents/
 .claude/
 .kombai/
+*.tmp
+*.log
 awscliv2.zip
-.devserver.log
-server.js.tmp
-server_final.js.tmp
-spawn.sh.tmp
 verified_deposits.txt
