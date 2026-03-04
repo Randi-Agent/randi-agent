@@ -121,29 +121,33 @@ export function useAuth() {
   }, []);
 
   const ensureServerSession = useCallback(async () => {
-    if (isLoggingOutGlobal || localIsLoggingOut) return;
+    if (isLoggingOutGlobal || localIsLoggingOut || sharedSessionSynced) return;
 
     // Check existing
     if (await hasServerSession()) {
       sharedSessionSynced = true;
       sharedNextRetryAt = 0;
       sharedSyncAttempts = 0;
+      setSessionSynced(true);
       notifySynced();
       return;
     }
 
-    sharedSyncAttempts += 1;
-    if (sharedSyncAttempts > MAX_SYNC_ATTEMPTS) {
+    if (sharedSyncAttempts >= MAX_SYNC_ATTEMPTS) {
       resetSharedState();
       throw new SessionSyncError("Too many attempts. Sign out and try again.", "max_attempts_exceeded", null);
     }
 
+    sharedSyncAttempts += 1;
     await syncSession();
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 800));
+    
+    // Small delay to ensure DB/Cookie consistency
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 500));
 
     sharedSessionSynced = true;
     sharedNextRetryAt = 0;
     sharedSyncAttempts = 0;
+    setSessionSynced(true);
     notifySynced();
   }, [hasServerSession, syncSession, localIsLoggingOut]);
 
@@ -175,25 +179,26 @@ export function useAuth() {
 
     if (!sharedSyncPromise) {
       sharedSyncPromise = ensureServerSession()
+        .then(() => {
+          setSessionSynced(true);
+          setSessionError(null);
+        })
         .catch((err) => {
           const norm = normalizeSyncError(err);
           sharedSessionSynced = false;
           sharedNextRetryAt = Date.now() + (norm.retryAfterMs ?? DEFAULT_RETRY_DELAY_MS);
+          setSessionError(norm.message);
           throw norm;
         })
         .finally(() => { sharedSyncPromise = null; });
     }
 
-    sharedSyncPromise
-      .then(() => { if (!cancelled) setSessionError(null); })
-      .catch((err) => {
-        if (cancelled) return;
-        const norm = normalizeSyncError(err);
-        setSessionError(norm.message);
-        if (sharedSyncAttempts < MAX_SYNC_ATTEMPTS) {
-          retryTimerRef.current = window.setTimeout(() => { setSyncRetryTick((v) => v + 1); }, Math.max(250, sharedNextRetryAt - Date.now()));
-        }
-      });
+    sharedSyncPromise.catch(() => {
+      if (cancelled) return;
+      if (sharedSyncAttempts < MAX_SYNC_ATTEMPTS) {
+        retryTimerRef.current = window.setTimeout(() => { setSyncRetryTick((v) => v + 1); }, Math.max(250, sharedNextRetryAt - Date.now()));
+      }
+    });
 
     return () => { cancelled = true; if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current); };
   }, [ready, authenticated, ensureServerSession, syncRetryTick, sessionSynced, localIsLoggingOut]);
