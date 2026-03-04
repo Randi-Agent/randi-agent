@@ -170,11 +170,6 @@ export async function POST(req: NextRequest) {
 
       const vercelProvider = new VercelProvider();
 
-      // Log tool schemas for debugging
-      for (const t of composioTools) {
-        console.log(`[Chat] Tool ${t.slug} inputParams: ${JSON.stringify(t.inputParameters)}`);
-      }
-
       const wrappedComposioTools = vercelProvider.wrapTools(
         composioTools,
         async (toolSlug, args) => {
@@ -184,11 +179,30 @@ export async function POST(req: NextRequest) {
             throw new Error(`APPROVAL_REQUIRED${toolSlug}${argsStr}`);
           }
 
+          // Normalize arguments - convert string params to arrays where needed for Composio
+          let normalizedArgs = args;
+          if (toolSlug === 'GMAIL_FETCH_EMAILS') {
+            normalizedArgs = { ...args };
+            if (normalizedArgs.label_ids && typeof normalizedArgs.label_ids === 'string') {
+              normalizedArgs.label_ids = [normalizedArgs.label_ids];
+            }
+            if (!normalizedArgs.max_results) {
+              normalizedArgs.max_results = 10;
+            }
+          }
+          if (toolSlug === 'GOOGLECALENDAR_FIND_EVENT') {
+            normalizedArgs = { ...args };
+            if (!normalizedArgs.max_results) {
+              normalizedArgs.max_results = 10;
+            }
+          }
+
           const resultStr = await executeOpenAIToolCall(auth.userId, {
             name: toolSlug,
-            arguments: args,
+            arguments: normalizedArgs,
           }, activeRuntime?.url || undefined);
 
+          console.log(`[Chat] Tool ${toolSlug} args: ${JSON.stringify(normalizedArgs)}`);
           console.log(`[Chat] Tool ${toolSlug} raw result (len=${resultStr.length}): ${resultStr.substring(0, 1000)}`);
 
           let parsed: Record<string, unknown>;
