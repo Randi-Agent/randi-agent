@@ -130,26 +130,38 @@ async function processWithRandi(userId: string, agent: any, query: string, token
             let toolCalls = assistantMessage.tool_calls || [];
 
             // --- LLM Resilience: Capture raw JSON tool calls from content ---
-            if (toolCalls.length === 0 && assistantMessage.content && assistantMessage.content.trim().startsWith('{')) {
-                try {
-                    const parsed = JSON.parse(assistantMessage.content);
-                    const parsedName = parsed.name || parsed.tool_name || parsed.function;
-                    const parsedArgs = parsed.parameters || parsed.arguments || parsed.args || {};
-                    if (typeof parsedName === 'string') {
-                        toolCalls = [{
-                            id: `call_${Math.random().toString(36).substring(2, 9)}`,
-                            type: 'function',
-                            function: {
-                                name: parsedName.replace(/\./g, '_'),
-                                arguments: typeof parsedArgs === 'string' ? parsedArgs : JSON.stringify(parsedArgs)
-                            }
-                        }];
-                        // We caught a tool call hidden in the text. Don't show the user the raw JSON text.
-                        lastContent = "Processing your request...";
-                        assistantMessage.tool_calls = toolCalls; // Mutate for history
+            if (toolCalls.length === 0 && assistantMessage.content) {
+                let textContent = assistantMessage.content.trim();
+                // Strip markdown code blocks if the model wrapped the JSON in them
+                if (textContent.startsWith('```')) {
+                    const firstNewline = textContent.indexOf('\n');
+                    const lastBacktick = textContent.lastIndexOf('```');
+                    if (firstNewline !== -1 && lastBacktick !== -1 && lastBacktick > firstNewline) {
+                        textContent = textContent.substring(firstNewline + 1, lastBacktick).trim();
                     }
-                } catch {
-                    // Not valid JSON, ignore
+                }
+
+                if (textContent.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(textContent);
+                        const parsedName = parsed.name || parsed.tool_name || parsed.function;
+                        const parsedArgs = parsed.parameters || parsed.arguments || parsed.args || {};
+                        if (typeof parsedName === 'string') {
+                            toolCalls = [{
+                                id: `call_${Math.random().toString(36).substring(2, 9)}`,
+                                type: 'function',
+                                function: {
+                                    name: parsedName.replace(/\./g, '_'),
+                                    arguments: typeof parsedArgs === 'string' ? parsedArgs : JSON.stringify(parsedArgs)
+                                }
+                            }];
+                            // We caught a tool call hidden in the text. Don't show the user the raw JSON text.
+                            lastContent = "Processing your request...";
+                            assistantMessage.tool_calls = toolCalls; // Mutate for history
+                        }
+                    } catch {
+                        // Not valid JSON, ignore
+                    }
                 }
             }
 
@@ -181,7 +193,27 @@ async function processWithRandi(userId: string, agent: any, query: string, token
                             } else {
                                 // Native tools (Gmail, etc.) via Composio/OpenAI wrapper
                                 try {
-                                    result = await executeOpenAIToolCall(userId, tc as any);
+                                    const resultStr = await executeOpenAIToolCall(userId, tc as any);
+                                    let parsed: any;
+                                    try { 
+                                        parsed = JSON.parse(resultStr); 
+                                    } catch { 
+                                        parsed = { data: { result: resultStr }, successful: true }; 
+                                    }
+
+                                    // Clean up verbose results for Telegram (save data/tokens)
+                                    if (parsed.data && typeof parsed.data === 'object') {
+                                        const data = parsed.data;
+                                        if (Array.isArray(data.messages)) {
+                                            data.messages = data.messages.map((msg: any) => ({
+                                                from: msg.from || (msg.payload?.headers?.find((h: any) => h.name === 'From')?.value),
+                                                subject: msg.subject || (msg.payload?.headers?.find((h: any) => h.name === 'Subject')?.value),
+                                                snippet: msg.snippet || msg.messageText?.substring(0, 150),
+                                            })).slice(0, 3); // Max 3 for Telegram
+                                        }
+                                    }
+                                    
+                                    result = JSON.stringify(parsed);
                                 } catch (err: any) {
                                     result = `Execution failed: ${err.message}`;
                                 }
