@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { createChatCompletion } from "@/lib/openrouter/client";
 import { executeOrchestrationToolCall, ORCHESTRATION_TOOLS } from "@/lib/orchestration/tools";
 import { getAgentToolsFromConfig, composioToolsToOpenAI, executeOpenAIToolCall } from "@/lib/composio/client";
+import { getRandiContext } from "@/lib/randi/context";
 import type OpenAI from "openai";
 
 type ChatTool = OpenAI.Chat.Completions.ChatCompletionTool;
@@ -105,8 +106,27 @@ async function processWithRandi(userId: string, agent: any, query: string, token
     // Always include orchestration tools for delegation
     const combinedTools = [...tools, ...ORCHESTRATION_TOOLS];
 
+    const randiContext = await getRandiContext();
+    const userPreference = await prisma.userAgentPreference.findUnique({
+        where: {
+            userId_agentSlug: {
+                userId: userId,
+                agentSlug: agent.slug,
+            },
+        },
+    }).catch(() => null);
+
+    let userCustomContext = "";
+    if (userPreference) {
+        if (userPreference.personality) userCustomContext += `\n\n# USER CUSTOM PERSONALITY\n${userPreference.personality}\n`;
+        if (userPreference.rules) userCustomContext += `\n\n# USER CUSTOM RULES\n${userPreference.rules}\n`;
+        if (userPreference.skills) userCustomContext += `\n\n# USER CUSTOM SKILLS\n${userPreference.skills}\n`;
+    }
+
+    const finalSystemPrompt = agent.systemPrompt + "\n\n" + randiContext + userCustomContext;
+
     const messages = [
-        { role: "system", content: agent.systemPrompt },
+        { role: "system", content: finalSystemPrompt },
         { role: "user", content: query }
     ];
 
