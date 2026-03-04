@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCredits } from "@/hooks/useCredits";
@@ -9,7 +9,7 @@ import { useTokenPrice } from "@/hooks/useTokenPrice";
 const mainNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: "grid" },
   { href: "/chat", label: "Ask Randi", icon: "message" },
-  { href: "/agents", label: "Capabilities", icon: "cpu" },
+  { href: "/agents", label: "Agent Skills", icon: "cpu" },
   { href: "/integrations", label: "Integrations", icon: "link" },
   { href: "/credits", label: "Tokens", icon: "coins" },
 ];
@@ -17,6 +17,7 @@ const mainNavItems = [
 const advancedNavItems = [
   { href: "/containers", label: "Containers", icon: "box" },
   { href: "/fleet", label: "Fleet", icon: "server" },
+  { href: "/telegram", label: "Telegram Bot", icon: "message" },
   { href: "/transparency", label: "Transparency", icon: "shield" },
   { href: "/roadmap", label: "Roadmap", icon: "map" },
 ];
@@ -40,6 +41,16 @@ export function Sidebar() {
   const { isSubscribed, balance } = useCredits();
   const { priceUsd } = useTokenPrice();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [skills, setSkills] = useState<any[]>([]);
+  const [skillsLoading, setSkillsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/skills")
+      .then((res) => res.json())
+      .then((data) => setSkills(data.skills || []))
+      .catch(() => { })
+      .finally(() => setSkillsLoading(false));
+  }, []);
 
   const renderNavItem = (item: { href: string; label: string; icon: string }) => {
     const active = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -87,6 +98,32 @@ export function Sidebar() {
 
         <div>
           <h3 className="px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 opacity-50">
+            Invokable Skills
+          </h3>
+          <div className="space-y-1 max-h-[30vh] overflow-y-auto no-scrollbar">
+            {skillsLoading ? (
+              [1, 2, 3].map((i) => (
+                <div key={i} className="h-8 mx-3 bg-muted animate-pulse rounded-md mb-1"></div>
+              ))
+            ) : skills.length > 0 ? (
+              skills.map((skill) => (
+                <Link
+                  key={skill.slug}
+                  href={`/skills/${skill.slug}`}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover:bg-primary"></span>
+                  {skill.name.split("-").map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
+                </Link>
+              ))
+            ) : (
+              <p className="px-3 text-[10px] text-muted-foreground italic">No skills found</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 opacity-50">
             Operator / Advanced
           </h3>
           <nav className="space-y-1">
@@ -122,7 +159,7 @@ export function Sidebar() {
         {priceUsd !== null && (
           <div className="px-3 py-2 bg-muted/50 rounded-lg">
             <a
-              href="https://pump.fun/profile/GmnoShpt5vyGwZLyPYsBah2vxPUAfvw6fKSLbBa2XpFy"
+              href="https://pump.fun/coin/FYAz1bPKJUFRwT4pzhUzdN3UqCN5ppXRL2pfto4zpump"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:opacity-80 transition-opacity"
@@ -133,7 +170,7 @@ export function Sidebar() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 
   return (
