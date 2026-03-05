@@ -10,7 +10,8 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [x] **Vercel/Supabase Migration**: Cloud-native hosting with localized Ohio latency tuning.
 - [x] **Custom Domain**: Launch `randi.chat` with Cloudflare SSL.
 - [x] **Credits 1.0**: Finalize internal credit purchasing and balance tracking.
-- [ ] **UX & Runtime Resilience**: Decouple chat from provisioning to ensure zero-block user experience. (Current Focus)
+- [x] **UX & Runtime Resilience**: Decouple chat from provisioning to ensure zero-block user experience.
+- [x] **Platform Explainer**: Launch the "How it Works" hub with the Three-Tier Economy breakdown ($RANDI, x402, AgentCard).
 
 ## 🏗️ Phase 2: The "Body" (Compute Layer)
 **Objective**: Connect the Vercel "Brain" to the AWS "Body" for code execution.
@@ -41,6 +42,7 @@ This roadmap outlines the strategic phases for evolving the Randi Agent Platform
 - [x] **Cross-Model Compatibility**: Custom XML parser for Minimax and other non-standard LLM tool outputs.
 - [x] **Persistent Chat History**: Full persistence of assistant tool calls and multi-turn tool results (40-message window).
 - [x] **Human-in-the-loop**: Approval UI for sensitive agent actions with `ToolApproval` persistence.
+- [x] **Trading & Data Expansion**: Integrated OpenWeather (Real-time data), Hummingbot (CEX/DEX Trading Core), and Polymarket (Prediction Markets).
 
 ## 🌎 Phase 5: Ecosystem Expansion
 **Objective**: Scale beyond a single web application.
