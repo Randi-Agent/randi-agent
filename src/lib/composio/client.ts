@@ -147,6 +147,13 @@ const CURATED_TOOLKIT_TOOLS: Record<string, string[]> = {
     "YOUTUBE_LIST_MY_VIDEOS",
     "YOUTUBE_LIST_PLAYLISTS",
   ],
+  "youtube-vrqivy": [
+    "YOUTUBE_SEARCH_VIDEOS",
+    "YOUTUBE_LIST_CHANNEL_VIDEOS",
+    "YOUTUBE_GET_VIDEO_DETAILS",
+    "YOUTUBE_LIST_MY_VIDEOS",
+    "YOUTUBE_LIST_PLAYLISTS",
+  ],
 };
 
 const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
@@ -164,7 +171,7 @@ const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
   supabase_api: "supabase",
   vercel_api: "vercel",
   telegram_api: "telegram",
-  "youtube-vrqivy": "youtube",
+  youtube: "youtube-vrqivy",
 };
 
 interface ParsedAgentToolConfig {
