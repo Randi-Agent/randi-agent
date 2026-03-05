@@ -147,12 +147,11 @@ const CURATED_TOOLKIT_TOOLS: Record<string, string[]> = {
     "YOUTUBE_LIST_MY_VIDEOS",
     "YOUTUBE_LIST_PLAYLISTS",
   ],
-  "youtube-vrqivy": [
-    "YOUTUBE_SEARCH_VIDEOS",
-    "YOUTUBE_LIST_CHANNEL_VIDEOS",
-    "YOUTUBE_GET_VIDEO_DETAILS",
-    "YOUTUBE_LIST_MY_VIDEOS",
-    "YOUTUBE_LIST_PLAYLISTS",
+  openweather: [
+    "OPENWEATHER_GET_CURRENT_WEATHER_DATA",
+    "OPENWEATHER_GET_5_DAY_3_HOUR_FORECAST_DATA",
+    "OPENWEATHER_GET_WEATHER_MAPS",
+    "OPENWEATHER_GET_AIR_POLLUTION_DATA",
   ],
 };
 
@@ -172,6 +171,7 @@ const LEGACY_TOOLKIT_ALIASES: Record<string, string> = {
   vercel_api: "vercel",
   telegram_api: "telegram",
   youtube: "youtube-vrqivy",
+  openweather_api: "openweather",
 };
 
 interface ParsedAgentToolConfig {

@@ -36,6 +36,15 @@ export const KNOWLEDGE_SKILLS = [
   "openrouter-llm",
   "privy-auth",
   "ux-design",
+  "connectors-available",
+  "find-arbitrage-opps",
+  "find-xemm-opps",
+  "hummingbot",
+  "hummingbot-deploy",
+  "hummingbot-developer",
+  "hummingbot-heartbeat",
+  "lp-agent",
+  "slides-generator",
 ];
 
 const SKILLS_DIR = path.join(process.cwd(), "skills");

@@ -95,7 +95,7 @@ export const PaymentExplainer = () => {
                                 <div>
                                     <h4 className="font-bold text-sm mb-1 uppercase tracking-wider">Knowledge Transfer</h4>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Most skills (like <b>React Expert</b> or <b>UX Design</b>) are injected directly into Randi's reasoning core. The agent "studies" these docs before every chat.
+                                        Skills like <b>React Expert</b> or <b>UX Design</b> are injected directly into Randi's reasoning core. The agent "studies" these docs before every chat.
                                     </p>
                                 </div>
                             </div>
@@ -106,7 +106,18 @@ export const PaymentExplainer = () => {
                                 <div>
                                     <h4 className="font-bold text-sm mb-1 uppercase tracking-wider">Autonomous Tools</h4>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        Action skills (like <b>Clawnch</b>) give Randi hands. The agent can trigger real code, deploy contracts, or post to Telegram without human intervention.
+                                        Action skills like <b>Clawnch</b> give Randi hands. The agent can trigger real code, deploy contracts, or post to Telegram without human intervention.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                    <span className="text-xs text-primary font-black">3</span>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-sm mb-1 uppercase tracking-wider text-primary">Trading Core (New)</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                        Equipped with <b>Hummingbot Skills</b>. Randi now understands cross-exchange arbitrage, market making, and liquidity provision across 100+ exchanges.
                                     </p>
                                 </div>
                             </div>
@@ -119,15 +130,15 @@ export const PaymentExplainer = () => {
                         </div>
                         <div className="space-y-3 font-mono text-[9px]">
                             <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-muted-foreground">RESOLVE: react-expert</span>
+                                <span className="text-muted-foreground">RESOLVE: hummingbot-core</span>
                                 <span className="text-success">[OK]</span>
+                            </div>
+                            <div className="flex justify-between border-b border-white/5 pb-2">
+                                <span className="text-muted-foreground">FIND: arbitrage-opps</span>
+                                <span className="text-primary font-bold">SCANNING</span>
                             </div>
                             <div className="flex justify-between border-b border-white/5 pb-2">
                                 <span className="text-muted-foreground">ACTION: clawnch_get_stats</span>
-                                <span className="text-success">[OK]</span>
-                            </div>
-                            <div className="flex justify-between border-b border-white/5 pb-2">
-                                <span className="text-muted-foreground">AUTH: siwe-gateway</span>
                                 <span className="text-success">[OK]</span>
                             </div>
                             <div className="flex justify-between">

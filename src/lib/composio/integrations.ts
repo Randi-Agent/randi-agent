@@ -296,6 +296,14 @@ export const SUPPORTED_COMPOSIO_TOOLKITS: readonly ComposioToolkitDef[] = [
     description: "Pull site traffic, Events, and conversion reports.",
     envKey: "COMPOSIO_AUTH_CONFIG_GOOGLEANALYTICS",
   },
+  {
+    slug: "openweather",
+    label: "OpenWeather",
+    category: "Data & Analytics",
+    icon: "🌤️",
+    description: "Real-time weather data, forecasts, and historical charts.",
+    envKey: "COMPOSIO_AUTH_CONFIG_OPENWEATHER",
+  },
 
   // ── Finance ───────────────────────────────────────────────────────────────
   {
