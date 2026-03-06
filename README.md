@@ -3,7 +3,7 @@
 
   # 🤖 Randi Agent Platform
   
-  **The enterprise-grade AI agent orchestration layer powered by Solana, Composio, and x402.**
+  **The enterprise-grade AI agent orchestration layer powered by Solana, Composio, and early x402 support.**
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
@@ -18,14 +18,14 @@
 
 ## 🌟 Overview
 
-Randi is a high-performance AI agent platform designed for secure orchestration, machine-to-machine (M2M) payments, and containerized agent execution. It bridges the gap between high-level AI reasoning (LLMs) and low-level system integrations using **Composio**, **Solana**, and the **x402 protocol**.
+Randi is a high-performance AI agent platform designed for secure orchestration, credit-backed usage, early machine-to-machine (M2M) payment support, and containerized agent execution. It bridges the gap between high-level AI reasoning (LLMs) and low-level system integrations using **Composio**, **Solana**, and initial **x402** groundwork.
 
 ### 💎 The Randi Economy
 
 The platform is powered by a multi-tier economic model designed for autonomous agent operations:
 1.  **Hosted Platform**: Access the managed environment at [randi.chat](https://www.randi.chat/), fueled by the **$RANDI** token on Solana.
 2.  **Verified Credits**: Users top up their balance with $RANDI to fund LLM reasoning and container compute.
-3.  **x402 Protocol**: Integrated support for autonomous machine-to-machine payments for premium AI services.
+3.  **x402 Protocol**: Initial support for autonomous machine-to-machine payments for premium AI services.
 4.  **Open Source**: Fully self-hostable for developers who want to run their own private agent fleet.
 
 ### 🛡️ The Randi Difference
@@ -33,7 +33,7 @@ The platform is powered by a multi-tier economic model designed for autonomous a
 Randi adopts a **security-first** approach to agentic workflows:
 
 *   **Hardened Isolation**: While standard frameworks execute tools in shared spaces, Randi supports **isolated Docker containers** on AWS EC2 for intensive agent tasks.
-*   **Trustless Orchestration**: Native **Privy authentication** ensures that agent fleet management is governed by hardware-secured wallet keys.
+*   **Trustless Orchestration**: Native **Privy authentication** supports secure wallet-based and social/email sign-in for agent fleet management.
 *   **Infrastructure over Interfaces**: Randi is designed as an **orchestration layer**, focusing on fleet health, container lifecycles, and verified credit ledgers.
 
 ### 🚀 Key Capabilities
@@ -42,7 +42,7 @@ Randi adopts a **security-first** approach to agentic workflows:
 - 🏗️ **On-Demand Compute**: Launch dedicated, containerized agent instances with unique URLs for complex coding and system tasks.
 - 🧰 **Extensible Skills**: 100+ out-of-the-box toolkits via Composio, including GitHub, Slack, and Financial APIs.
 - 💳 **Credit-Backed Usage**: Token-gated access with automated burn mechanics and verified on-chain deposits.
-- ⛓️ **Web3 Native**: Built-in support for Solana wallet connections and the x402 payment standard.
+- ⛓️ **Web3 Native**: Built-in support for Solana wallet connections and early x402 payment support.
 - 🤖 **Telegram Integration**: Control your agents and receive real-time updates via personal Telegram bots.
 
 ---
@@ -67,7 +67,7 @@ The platform has successfully moved through its foundational stages and is curre
 
 - Node.js 20+
 - Docker (running)
-- Solana Wallet
+- Optional: Solana wallet for wallet-based flows
 
 ### Installation
 
