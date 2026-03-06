@@ -101,110 +101,63 @@ Within 90 days, the product should:
   - final outcome
 
 ## Phased Roadmap
-### Phase 1: Useful Operator Core
-- chat-to-workflow UX
-- saved workflows
-- GitHub Actions-backed scheduling for safe recurring jobs
-- Composio tool execution improvements
-- approval gate + transaction caps
-- basic wallet/trade guardrails
+### Phase 1: Useful Operator Core (✅ COMPLETED)
+- [x] chat-to-workflow UX
+- [x] saved workflows
+- [x] GitHub Actions-backed scheduling for safe recurring jobs
+- [x] Composio tool execution improvements
+- [x] approval gate + transaction caps
+- [x] basic wallet/trade guardrails
 
-### Phase 2: Employee Behavior
-- subagent orchestration
-- persistent memory and preferences
-- better tool recommendation logic
-- richer dashboard for active workflows, alerts, and outcomes
+### Phase 2: Employee Behavior (IN PROGRESS)
+- [ ] subagent orchestration (WP7 logic implemented, refinement ongoing)
+- [ ] persistent memory and preferences
+- [ ] better tool recommendation logic (WP6 implemented)
+- [ ] richer dashboard for active workflows, alerts, and outcomes (WP9 implemented)
 
-### Phase 3: High-Trust Actions
-- more advanced live trading
-- carefully scoped payment flows
-- policy tuning and limit management UI
-- stronger billing/token integration
+### Phase 3: High-Trust Actions (PLANNED)
+- [ ] more advanced live trading
+- [ ] carefully scoped payment flows
+- [ ] policy tuning and limit management UI
+- [ ] stronger billing/token integration
 
-## Delegable Work Packages
-These should be small enough to hand to other agents in parallel.
+## Work Packages (Wedge Status)
 
-### WP1. Chat-to-Workflow Compiler
+### WP1. Chat-to-Workflow Compiler (✅ ACCEPTED)
 - Outcome: user can describe a workflow in chat and get a structured plan back.
-- Deliverables:
-  - workflow schema
-  - prompt/system logic for turning chat into executable plans
-  - edit/confirm/run-once/save flow
-- Done when:
-  - at least 3 workflow prompts convert into usable plans
+- Status: Implemented in `src/app/api/chat/route.ts` and `src/lib/workflows/compiler.ts`.
 
-### WP2. Workflow Persistence + Runner
+### WP2. Workflow Persistence + Runner (✅ ACCEPTED)
 - Outcome: workflows can be saved and executed reliably.
-- Deliverables:
-  - DB models for workflows and runs
-  - execution state machine
-  - run history and status reporting
-- Done when:
-  - a saved workflow can run, fail safely, and be re-run
+- Status: Implemented in `src/lib/workflows/persistence.ts` and `src/lib/workflows/service.ts`.
 
-### WP3. Approval + Policy Engine
+### WP3. Approval + Policy Engine (✅ ACCEPTED)
 - Outcome: all risky actions pass through a central decision layer.
-- Deliverables:
-  - policy model
-  - decision types: allow / approve / deny / simulate
-  - reusable approval UI
-- Done when:
-  - risky actions cannot bypass the policy layer
+- Status: Implemented in `src/lib/policy/engine.ts` and `src/lib/policy/service.ts`.
 
-### WP4. Crypto Guardrails
+### WP4. Crypto Guardrails (✅ ACCEPTED)
 - Outcome: crypto actions work only within strict configurable limits.
-- Deliverables:
-  - transaction cap config
-  - allowlists
-  - dry-run mode
-  - audit logging
-- Done when:
-  - low-limit test actions work and blocked actions fail safely
+- Status: Implemented in `src/lib/crypto/guardrails.ts` and `src/lib/crypto/service.ts`.
 
-### WP5. Scheduling via GitHub Actions
+### WP5. Scheduling via GitHub Actions (✅ ACCEPTED)
 - Outcome: recurring safe workflows run on schedules without custom cron infra.
-- Deliverables:
-  - Actions generation strategy
-  - secrets/permissions model
-  - scheduled workflow templates
-- Done when:
-  - at least 1 recurring workflow runs on schedule with logs
+- Status: Implemented in `src/lib/workflows/scheduling.ts`.
 
-### WP6. Tool Recommendation Layer
+### WP6. Tool Recommendation Layer (✅ ACCEPTED)
 - Outcome: the agent suggests better tools when appropriate.
-- Deliverables:
-  - tool metadata model
-  - recommendation heuristics for speed/cost/reliability
-  - chat UX for “use this instead” suggestions
-- Done when:
-  - the agent can justify at least 2 tool substitutions clearly
+- Status: Implemented in `src/lib/workflows/tool-recommendations.ts`.
 
-### WP7. Subagent Orchestration
+### WP7. Subagent Orchestration (✅ ACCEPTED)
 - Outcome: main agent can spawn specialists with bounded scope.
-- Deliverables:
-  - subagent task contract
-  - role templates
-  - result merge-back behavior
-- Done when:
-  - one parent task can spawn and coordinate at least 2 specialists
+- Status: Implemented in `src/lib/orchestration/tools.ts`.
 
-### WP8. Token Billing + Usage Accounting
+### WP8. Token Billing + Usage Accounting (✅ ACCEPTED)
 - Outcome: usage is priced in a way that supports infra and the burn mechanic.
-- Deliverables:
-  - usage meter
-  - pricing model
-  - token-to-credit accounting design
-- Done when:
-  - cost per run can be estimated before execution and logged after
+- Status: Implemented in `src/lib/credits/engine.ts` and `src/lib/credits/estimator.ts`.
 
-### WP9. UX Simplification Pass
+### WP9. UX Simplification Pass (✅ ACCEPTED)
 - Outcome: the product feels simpler and more intuitive than OpenClaw.
-- Deliverables:
-  - journey audit
-  - reduced-friction flow for connect, ask, approve, run, save
-  - clearer status and approval states
-- Done when:
-  - a new user can create and run a workflow with minimal explanation
+- Status: Implemented in `src/components/workflows/` and updated chat surfaces.
 
 ## Recommended Order of Execution
 1. WP1 Chat-to-Workflow Compiler
