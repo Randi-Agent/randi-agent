@@ -7,8 +7,8 @@ import { useCredits } from "@/hooks/useCredits";
 
 const mainNavItems = [
   { href: "/dashboard", label: "Home", icon: "grid" },
-  { href: "/chat", label: "Open chat", icon: "message" },
-  { href: "/integrations", label: "Connect tools", icon: "link" },
+  { href: "/chat", label: "Chat", icon: "message" },
+  { href: "/integrations", label: "Integrations", icon: "link" },
   { href: "/workflows", label: "Automations", icon: "zap" },
   { href: "/skills", label: "Skills Library", icon: "cpu" },
   { href: "/how-it-works", label: "Getting Started", icon: "help" },

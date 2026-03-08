@@ -40,7 +40,7 @@ export default function WorkflowsPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <span className="inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-              Saved workflows
+              Saved automations
             </span>
             <h1 className="mt-4 text-4xl font-black tracking-tight">Automations</h1>
             <p className="mt-3 max-w-2xl text-lg text-muted-foreground leading-relaxed">

@@ -278,7 +278,7 @@ export function ApprovalCard({ request, onDecision, decided = "PENDING" }: Appro
                     ? "bg-rose-500/10 text-rose-400"
                     : "bg-amber-500/10 text-amber-400"
               }`}>
-                {status === "approved" ? "Approved" : status === "rejected" ? "Declined" : "Needs review"}
+                {status === "approved" ? "Approved" : status === "rejected" ? "Declined" : "Ready for review"}
               </span>
             </div>
             <h3 className="text-lg font-bold leading-tight text-foreground">
