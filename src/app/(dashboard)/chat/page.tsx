@@ -26,6 +26,7 @@ interface IntegrationSummary {
   slug: string;
   label: string;
   connected: boolean;
+  suggestedPrompt: string | null;
 }
 
 const GENERIC_PROMPTS = [
@@ -39,7 +40,7 @@ const GENERIC_PROMPTS = [
 
 const CHAT_START_STEPS = [
   {
-    title: "Start with one concrete task",
+    title: "Start with one real task",
     description: "Ask for a real deliverable like a draft, summary, plan, answer, or next step.",
   },
   {
@@ -54,21 +55,10 @@ const CHAT_START_STEPS = [
 
 const TRUST_BADGES = ["Research, drafts, and plans", "Approvals stay reviewable", "Automate later when ready"];
 
-const TOOL_PROMPT_MAP: Record<string, string> = {
-  gmail: "Draft an email reply from these notes.",
-  googlecalendar: "Plan my day from Google Calendar.",
-  googlesheets: "Pull the key points from this sheet and summarize them.",
-  github: "Review this GitHub issue and suggest the next step.",
-  slack: "Write a short Slack update for the team.",
-  notion: "Turn these notes into a cleaner brief.",
-  telegram: "Draft a short Telegram update I can send.",
-  supabase: "Help me inspect this data question before making changes.",
-};
-
 function buildPromptChips(connectedIntegrations: IntegrationSummary[]) {
   const suggestions = connectedIntegrations
-    .map((integration) => TOOL_PROMPT_MAP[integration.slug])
-    .filter(Boolean);
+    .map((integration) => integration.suggestedPrompt)
+    .filter((prompt): prompt is string => Boolean(prompt));
 
   return Array.from(new Set([...suggestions, ...GENERIC_PROMPTS])).slice(0, 6);
 }
@@ -114,10 +104,10 @@ export default function ChatHubPage() {
           <RandiLogo size="xl" variant="icon-only" animated className="drop-shadow-2xl" />
         </div>
         <h1 className="text-5xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-          Ask Randi
+          Chat with Randi
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          Start with one concrete task. Randi can research, draft, plan, and use your connected tools when you want her to act.
+          Start with one real task. Randi can research, draft, plan, and use your connected tools when you want her to act.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           {TRUST_BADGES.map((badge) => (
@@ -175,7 +165,7 @@ export default function ChatHubPage() {
             ))}
           </div>
           <Link href="/integrations" className="mt-5 inline-flex text-sm font-semibold text-primary hover:underline">
-            {connectedCount > 0 ? "Manage connected tools" : "Connect tools"}
+            {connectedCount > 0 ? "Manage tools" : "Connect tools"}
           </Link>
         </div>
       </div>
@@ -241,6 +231,12 @@ export default function ChatHubPage() {
               <p className="mt-2 text-muted-foreground">
                 Start with a small real task in chat and your history will show up here.
               </p>
+              <Link
+                href={`/chat/new${leadAgent ? `?agentId=${leadAgent.id}` : ""}`}
+                className="mt-4 inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+              >
+                Start a new chat
+              </Link>
             </div>
           ) : (
             sessions.map((session) => (

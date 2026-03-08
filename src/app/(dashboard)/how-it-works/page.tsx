@@ -133,11 +133,11 @@ export default function HowItWorksPage() {
               <p className="mt-1 text-sm text-muted-foreground">See your setup progress, recent work, and current readiness.</p>
             </Link>
             <Link href="/integrations" className="block rounded-2xl border border-border/60 bg-background/40 p-4 transition-colors hover:bg-muted/50">
-              <p className="font-semibold">Connect tools</p>
+              <p className="font-semibold">Integrations</p>
               <p className="mt-1 text-sm text-muted-foreground">Choose which tools Randi can access and manage your connections.</p>
             </Link>
             <Link href="/workflows" className="block rounded-2xl border border-border/60 bg-background/40 p-4 transition-colors hover:bg-muted/50">
-              <p className="font-semibold">Saved automations</p>
+              <p className="font-semibold">Automations</p>
               <p className="mt-1 text-sm text-muted-foreground">Review the tasks you have already turned into repeatable work.</p>
             </Link>
           </div>

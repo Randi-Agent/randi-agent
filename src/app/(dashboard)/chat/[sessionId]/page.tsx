@@ -232,7 +232,7 @@ export default function ChatSessionPage() {
                 {connectedCount > 0 ? "Manage tools" : "Connect tools"}
               </Link>
               <Link href="/how-it-works" className="text-sm font-semibold text-primary hover:underline">
-                Getting started
+                Getting Started
               </Link>
             </div>
           </div>
