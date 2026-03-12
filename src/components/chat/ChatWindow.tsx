@@ -143,16 +143,16 @@ export function ChatWindow({
         }
     }, [sendMessage]);
 
-    return (
-        <div className="flex flex-col h-full min-h-[24rem] bg-card/60 rounded-xl border border-border overflow-hidden">
-            <div
-                ref={scrollRef}
-                role="log"
-                aria-label="Chat conversation"
-                aria-live="polite"
-                aria-busy={isLoading}
-                className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
-            >
+     return (
+         <div className="flex flex-col h-full min-h-[24rem] bg-card/30 rounded-xl border border-border overflow-hidden">
+             <div
+                 ref={scrollRef}
+                 role="log"
+                 aria-label="Chat conversation"
+                 aria-live="polite"
+                 aria-busy={isLoading}
+                 className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+             >
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-center p-8">
                         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
