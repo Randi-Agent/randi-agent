@@ -7,8 +7,6 @@ on:
 permissions:
   contents: read
   checks: write
-env:
-  APP_DIR: apps/randi-chat
 jobs:
   lint:
     name: Lint & Format
@@ -23,14 +21,11 @@ jobs:
           cache: npm
           cache-dependency-path: apps/randi-chat/package-lock.json
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat ci --legacy-peer-deps
       - name: Run ESLint
-        run: npm run lint
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat run lint
       - name: Check formatting
-        run: npm run format:check
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat run format:check
         continue-on-error: true
   test:
     name: Unit Tests
@@ -45,11 +40,9 @@ jobs:
           cache: npm
           cache-dependency-path: apps/randi-chat/package-lock.json
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat ci --legacy-peer-deps
       - name: Run tests with coverage
-        run: npm run test:coverage
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat run test:coverage
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
@@ -69,11 +62,9 @@ jobs:
           cache: npm
           cache-dependency-path: apps/randi-chat/package-lock.json
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat ci --legacy-peer-deps
       - name: Run TypeScript check
-        run: ./node_modules/.bin/tsc --noEmit --project tsconfig.json
-        working-directory: ${{ env.APP_DIR }}
+        run: ./apps/randi-chat/node_modules/.bin/tsc --noEmit --project apps/randi-chat/tsconfig.json
   build:
     name: Build Check
     runs-on: ubuntu-latest
@@ -87,11 +78,9 @@ jobs:
           cache: npm
           cache-dependency-path: apps/randi-chat/package-lock.json
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat ci --legacy-peer-deps
       - name: Run build
-        run: npm run build
-        working-directory: ${{ env.APP_DIR }}
+        run: npm --prefix apps/randi-chat run build
         env:
           NEXT_PUBLIC_PRIVY_APP_ID: ${{ secrets.NEXT_PUBLIC_PRIVY_APP_ID }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
